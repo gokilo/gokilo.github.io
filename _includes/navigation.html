@@ -1,0 +1,7 @@
+<input type="checkbox" id="drawer-control" class="drawer">
+<nav id="mynav">
+    <label for="drawer-control" class="drawer-close"></label>
+    {% for item in site.data.nav %}
+        <a href="{{item.link}}">{{item.name}}</a>
+    {% endfor %}
+</nav>

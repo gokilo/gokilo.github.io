@@ -1,20 +1,23 @@
 - name: Home
   link: /
 
+- name: Setup
+  link: /setup.html 
+
 - name: Entering raw mode
   link: /entering-raw-mode.html
 
-- name: Raw input and output
-  link: /raw-input-and-output.html
+#- name: Raw input and output
+#  link: /raw-input-and-output.html
 
-- name: A text viewer
-  link: /a-text-viewer.html
+#- name: A text viewer
+#  link: /a-text-viewer.html
 
-- name: A text editor
-  link: /a-text-editor.html
+#- name: A text editor
+#  link: /a-text-editor.html
 
-- name: Search
-  link: /search.html
+#- name: Search
+#  link: /search.html
 
-- name: Appendices
-  link: /appendices.html
+#- name: Appendices
+#  link: /appendices.html

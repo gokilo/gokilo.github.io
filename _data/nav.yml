@@ -1,9 +1,6 @@
 - name: Home
   link: /
 
-- name: Setup
-  link: /setup.html
-
 - name: Entering raw mode
   link: /entering-raw-mode.html
 

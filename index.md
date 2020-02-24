@@ -22,8 +22,27 @@ of this is that **you are going to build a text editor from scratch**!
 Anything you learn along the way is bonus, and there's plenty to learn 
 just from typing in the changes to the code and observing the results.
 
-See the [appendices](08.appendices.html) for more information on the 
+See the [appendices](/appendices.html) for more information on the 
 tutorial itself (including what to do if you get stuck,
 and where to get help).
 
-If you're ready to begin, then go to [chapter 1](/setup.html)!
+## Pre-Requisites
+
+### 1. The Go programming language distribution & familiarity with Go
+Ensure you have the Go programming language and standard distribution
+of development tools [installed](https://golang.org/doc/install) 
+installed on your development machine and are familar with developing
+and compiling programs in Go.
+
+This tutorial assumes you have a working knowledge of Go and will not cover
+basic language concepts. If you are new to Go, please consider taking 
+the [Go Tour](https://tour.golang.org/welcome/1) and try a few other
+[small projects](https://medium.com/hackr-io/learn-golang-best-go-tutorials-for-beginners-deb6cab45867)
+first.
+
+### 2. A text editor
+Most programming text editors have some form of support for Go like
+syntax highlighting, auto-complete etc. Taking a minute to set these
+up for your text editor of choice will speed things up.
+
+If you're ready to begin, then go on to [Entering Raw Mode](/entering-raw-mode.html)

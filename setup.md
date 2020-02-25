@@ -1,4 +1,6 @@
-# Pre-Requisites
+# Setup
+
+## Pre-Requisites
 
 ### Setup the Go programming language distribution
 [Install the Go language distribution](https://golang.org/doc/install) 
@@ -23,7 +25,7 @@ You may also find [Go by Example](https://gobyexample.com/) and
 [Effective Go](https://golang.org/doc/effective_go.html) to be valuable
 learning resources.
 
-# Development Setup
+## Development Setup
 
 ### Step 0: Setup your development directory
 It is recommended that you create a remote git repository

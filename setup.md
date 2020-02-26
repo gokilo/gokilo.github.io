@@ -57,7 +57,7 @@ of your repository URL that looks like above.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| Step 1: Initiate a go module | |
+| 1. Initiate a go module | |
 
 ```
 $ go mod init github.com/gokilo/gokilo #replace repo path with your own
@@ -77,7 +77,7 @@ in case you do so at a later date.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| Step 2: add a .gitignore file | .gitignore |
+| 2. add a .gitignore file | .gitignore |
 
 ```
 # Binaries for programs and plugins

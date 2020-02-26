@@ -34,38 +34,29 @@ func main() {
 }
 ```
 In Go, the standard input device is exposed in the os package as 
-`os.Stdin`. Since `os.Stdin` is of the type `os.File` which implements
-the standard `io.Reader` interface widely used across Go packages,
-we can simply wrap it up in a Buffered IO reader by calling the function
-`bufio.NewReader(os.Stdin)`. Buffered IO readers make it much easier
-to 
+`os.Stdin` which is of the type `os.File`. Since `os.File` implements
+the standard `io.Reader` interface, we can simply wrap it up in a 
+buffered i/o reader using `bufio.NewReader(os.Stdin)` which 
+automatically buffers multiple key presses to be read at our
+convenience and exposes convenient functions to read or peek a byte
+at a time.
 
-Since `os.File` implements the `io.Reader` interface, we can easily
-wrap this in a buffered IO reader  which makes it a lot easier to 
-work with a stream of bytes 
+We then enter an infinite loop where we try to read data from the
+standared input one byte at a time, check for errors or if we have
+hit end of file marker (remember `os.Stdin` is an `os.File`) and 
+then print what we just read.
 
-Input in Go largely works using variants of the `io.Reader` interface.
-The OS package exposes `Stdin` as an `io.Reader` and here we are wrapping
-it in the Buffered IO reader through the `bufio.NewReader(os.Stdin)` function
-call so that we can collect multiple key press codes in the buffer. As we 
-will see later, some keys return more than one key-code
-
-We then check 
-as a reader in the `os` package. read()` and `STDIN_FILENO` come from `<unistd.h>`. We are asking `read()` to
-read `1` byte from the standard input into the variable `c`, and to keep doing
-it until there are no more bytes to read. `read()` returns the number of bytes
-that it read, and will return `0` when it reaches the end of a file.
-
-When you run `./kilo`, your terminal gets hooked up to the standard input, and
-so your keyboard input gets read into the `c` variable. However, by default
-your terminal starts in **canonical mode**, also called **cooked mode**. In
-this mode, keyboard input is only sent to your program when the user presses
-<kbd>Enter</kbd>. This is useful for many programs: it lets the user type in a
-line of text, use <kbd>Backspace</kbd> to fix errors until they get their input
-exactly the way they want it, and finally press <kbd>Enter</kbd> to send it to
-the program. But it does not work well for programs with more complex user
-interfaces, like text editors. We want to process each keypress as it comes in,
-so we can respond to it immediately.
+When you compile and run `./gokilo`, your terminal gets hooked up to
+the standard input, and so your keyboard input gets read into the `b` 
+variable. However, by default your terminal starts in **canonical mode**, 
+also called **cooked mode**. In this mode, keyboard input is only sent to
+your program when the user presses <kbd>Enter</kbd>. This is useful for
+many programs: it lets the user type in a line of text, use <kbd>Backspace</kbd>
+to fix errors until they get their input exactly the way they want it, and
+finally press <kbd>Enter</kbd> to send it to the program. But it does not
+work well for programs with more complex user interfaces, like text editors.
+We want to process each keypress as it comes in, so we can respond to it
+immediately.
 
 What we want is **raw mode**. Unfortunately, there is no simple switch you can
 flip to set the terminal to raw mode. Raw mode is achieved by turning off a

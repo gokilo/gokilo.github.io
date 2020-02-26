@@ -1,3 +1,8 @@
+---
+layout: default
+title: Setup
+---
+
 # Entering Raw Mode
 
 Let's try and read keypresses from the user. 
@@ -66,3 +71,4 @@ this chapter.
 To exit the above program, press <kbd>Ctrl-D</kbd> to tell `read()` that it's
 reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
 the process to terminate immediately.
+

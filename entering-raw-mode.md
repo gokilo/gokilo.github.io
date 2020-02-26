@@ -1,11 +1,11 @@
 # Entering Raw Mode
 
-Let's try and read keypresses from the user. (The lines you need to add are
-highlighted and marked with arrows.)
+Let's try and read keypresses from the user. 
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
 | Step 3: get keypresses from user| main.go|
+
 ```
 package main
 
@@ -21,7 +21,7 @@ func main() {
 	r := bufio.NewReader(os.Stdin)
 
 	for {
-		r, _, err := r.ReadRune()
+		b, err := r.ReadByte()
 
 		if err == io.EOF {
 			break
@@ -29,12 +29,29 @@ func main() {
 			fmt.Printf("Error reading from keyboard: %s\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf(string(r))
+		fmt.Printf(string(b))
 	}
 }
 ```
+In Go, the standard input device is exposed in the os package as 
+`os.Stdin`. Since `os.Stdin` is of the type `os.File` which implements
+the standard `io.Reader` interface widely used across Go packages,
+we can simply wrap it up in a Buffered IO reader by calling the function
+`bufio.NewReader(os.Stdin)`. Buffered IO readers make it much easier
+to 
 
-`read()` and `STDIN_FILENO` come from `<unistd.h>`. We are asking `read()` to
+Since `os.File` implements the `io.Reader` interface, we can easily
+wrap this in a buffered IO reader  which makes it a lot easier to 
+work with a stream of bytes 
+
+Input in Go largely works using variants of the `io.Reader` interface.
+The OS package exposes `Stdin` as an `io.Reader` and here we are wrapping
+it in the Buffered IO reader through the `bufio.NewReader(os.Stdin)` function
+call so that we can collect multiple key press codes in the buffer. As we 
+will see later, some keys return more than one key-code
+
+We then check 
+as a reader in the `os` package. read()` and `STDIN_FILENO` come from `<unistd.h>`. We are asking `read()` to
 read `1` byte from the standard input into the variable `c`, and to keep doing
 it until there are no more bytes to read. `read()` returns the number of bytes
 that it read, and will return `0` when it reaches the end of a file.

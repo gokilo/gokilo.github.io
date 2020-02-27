@@ -11,7 +11,8 @@ Let's try and read keypresses from the user.
 |:-----------------|---------:|
 | 3. Get keypresses from user| main.go|
 
-```
+```go
+
 package main
 
 import (
@@ -36,6 +37,7 @@ func main() {
 		}
 	}
 }
+
 ```
 
 In Go, the standard input device is exposed in the os package as 

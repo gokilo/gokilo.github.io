@@ -9,7 +9,7 @@ Let's try and read keypresses from the user.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| Step 3: get keypresses from user| main.go|
+| 3. Get keypresses from user| main.go|
 
 ```
 package main
@@ -26,34 +26,43 @@ func main() {
 	r := bufio.NewReader(os.Stdin)
 
 	for {
-		b, err := r.ReadByte()
+		_, err := r.ReadByte()
 
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			fmt.Printf("Error reading from keyboard: %s\n", err)
+			fmt.Printf("Error reading from Stdin: %s\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf(string(b))
 	}
 }
 ```
-In Go, the standard input device is exposed in the os package as 
-`os.Stdin` which is of the type `os.File`. Since `os.File` implements
-the standard `io.Reader` interface, we can simply wrap it up in a 
-buffered i/o reader using `bufio.NewReader(os.Stdin)` which 
-automatically buffers multiple key presses to be read at our
-convenience and exposes convenient functions to read or peek a byte
-at a time.
 
-We then enter an infinite loop where we try to read data from the
-standared input one byte at a time, check for errors or if we have
-hit end of file marker (remember `os.Stdin` is an `os.File`) and 
-then print what we just read.
+In Go, the standard input device is exposed in the os package as 
+package level `os.File` type variable called `os.Stdin`. Rather
+than directly reading from the file C-style, we will prefer to
+use a buffered i/o reader provided by Go's standard `bufio` package 
+which automatically buffers key presses and provides convenient
+functions to read or peek a byte at a time. Since `os.File` 
+implements the standard `io.Reader` interface, creating a buffered
+i/o reader is as simple as calling `bufio.NewReader(os.Stdin)`
+to wrap it up in a buffered i/o reader.
 
 When you compile and run `./gokilo`, your terminal gets hooked up to
-the standard input, and so your keyboard input gets read into the `b` 
-variable. However, by default your terminal starts in **canonical mode**, 
+the standard input, and so your keyboard input gets read in the call
+to `r.ReadByte()`. Since at this stage, we are not actually using the
+character we read, we assign it to an `_` which throws away the 
+return value as Go compiler doesn't allow un-used variables. 
+
+In Go, errors are returned as values rather than as thrown exceptions 
+etc. So here we check for errors before continuing the infinite loop
+of reading from the keyboard. Specifically, we check if the `err` variable
+is set to `io.EOF` which marks the `end of file` marker and if so, we 
+exit the program normally (remember Stdin is a `os.File`, you could 
+theoritically pipe from some other device to it). If the error is not 
+nil but some other value, we exit with an error message & code.
+
+By default your terminal starts in **canonical mode**, 
 also called **cooked mode**. In this mode, keyboard input is only sent to
 your program when the user presses <kbd>Enter</kbd>. This is useful for
 many programs: it lets the user type in a line of text, use <kbd>Backspace</kbd>
@@ -66,9 +75,11 @@ immediately.
 What we want is **raw mode**. Unfortunately, there is no simple switch you can
 flip to set the terminal to raw mode. Raw mode is achieved by turning off a
 great many flags in the terminal, which we will do gradually over the course of
-this chapter.
+this chapter. This also works differently for Windows and Linux - so we will
+also discuss how Go handles conditional compilation out of the box allowing
+you to create a Windows version & a Linux version of the same function.
 
-To exit the above program, press <kbd>Ctrl-D</kbd> to tell `read()` that it's
-reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
+To exit the above program, press <kbd>Ctrl-D</kbd> to tell the program that it
+has reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
 the process to terminate immediately.
 

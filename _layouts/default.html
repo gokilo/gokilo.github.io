@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: "en-US" }}">
+  <head>
+
+    {% if site.google_analytics %}
+      <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.google_analytics }}"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ site.google_analytics }}');
+      </script>
+    {% endif %}
+    <meta charset="UTF-8">
+
+{% seo %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+  </head>
+  <body>
+    <header class="page-header" role="banner">
+      <h1 class="project-name">GoKilo</h1>
+      <h2 class="project-tagline">Build your own text editor in Go!</h2>
+        <nav id="mynav">
+            {% for item in site.data.nav %}
+                <a style="color:white" href="{{item.link}}">{{item.name}}</a>&nbsp;&nbsp;
+            {% endfor %}
+        </nav>
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      {{ content }}
+
+      <footer class="site-footer">
+        <small>
+            &copy; 2020, 
+            <a xmlns:cc="http://creativecommons.org/ns#" href="https://www.linkedin.com/in/hariharan-srinath-12332113" property="cc:attributionName" rel="cc:attributionURL">
+                Hariharan Srinath
+            </a>.
+            This work is licensed under a 
+            <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">
+                CC BY 4.0
+            </a> license. 
+            Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="https://viewsourcecode.org/snaptoken/kilo/" rel="dct:source">https://viewsourcecode.org/snaptoken/kilo/</a></small>
+        </small>
+      </footer>
+    </main>
+  </body>
+</html>

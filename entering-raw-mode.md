@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Setup
+title: Entering Raw Mode
 ---
 
 # Entering Raw Mode
@@ -85,3 +85,32 @@ To exit the above program, press <kbd>Ctrl-D</kbd> to tell the program that it
 has reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
 the process to terminate immediately.
 
+## Press <kbd>q</kbd> to quit?
+
+To demonstrate how canonical mode works, we'll have the program exit when it
+reads a <kbd>q</kbd> keypress from the user. 
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 4. Press q to quit| main.go|
+
+```go
+
+			os.Exit(1)
+		}
+
+		// ***** Lines to Add
+		if b == 'q'{
+			break
+		}
+		// *****
+	}
+}
+```
+
+To quit this program, you will have to type a line of text that includes a `q`
+in it, and then press enter. The program will quickly read the line of text one
+character at a time until it reads the `q`, at which point the `for` loop
+will stop and the program will exit. Any characters after the `q` will be left
+unread on the input queue, and you may see that input being fed into your shell
+after your program exits.

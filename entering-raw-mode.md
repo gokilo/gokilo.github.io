@@ -99,11 +99,14 @@ reads a <kbd>q</kbd> keypress from the user.
 			os.Exit(1)
 		}
 
-		// ***** Lines to Add
+		//######## Lines to Add ##########
+
 		if b == 'q'{
 			break
 		}
-		// *****
+
+
+		//################################
 	}
 }
 ```
@@ -114,3 +117,61 @@ character at a time until it reads the `q`, at which point the `for` loop
 will stop and the program will exit. Any characters after the `q` will be left
 unread on the input queue, and you may see that input being fed into your shell
 after your program exits.
+
+## Turn off echoing
+
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 5. Turn off echoing | rawmode_unix.go|
+
+```go
+
+// +build !windows
+
+package main 
+
+import (
+	"fmt"
+
+	"golang.org/x/sys/unix"
+)
+
+func rawMode() error {
+
+	termios, err := unix.IoctlGetTermios(unix.Stdin, unix.TCGETS)
+	if err != nil {
+		return fmt.Errorf("could not fetch console settings: %s", err)
+	}
+
+	termios.Lflag = termios.Lflag &^ unix.ECHO 
+
+	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+		return fmt.Errorf("could not set console settings: %s", err)
+	}
+
+	return  nil
+}
+
+```
+
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 5. Turn off echoing | main.go|
+
+```go
+
+func main() {
+
+	//######## Lines to Add ##########
+
+	if err := rawMode(); err != nil{
+		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	//################################
+
+	r := bufio.NewReader(os.Stdin)
+```

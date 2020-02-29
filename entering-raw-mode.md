@@ -5,6 +5,8 @@ title: Entering Raw Mode
 
 # Entering Raw Mode
 
+## 3. Get keypresses from user
+
 Let's try and read keypresses from the user. 
 
 | **Commit Title** | **File** |
@@ -85,7 +87,7 @@ To exit the above program, press <kbd>Ctrl-D</kbd> to tell the program that it
 has reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
 the process to terminate immediately.
 
-## Press <kbd>q</kbd> to quit?
+## 4. Press <kbd>q</kbd> to quit?
 
 To demonstrate how canonical mode works, we'll have the program exit when it
 reads a <kbd>q</kbd> keypress from the user. 
@@ -118,9 +120,7 @@ will stop and the program will exit. Any characters after the `q` will be left
 unread on the input queue, and you may see that input being fed into your shell
 after your program exits.
 
-## Turn off echoing
-
-
+## 5. Turn off echoing
 
 In Go, interactions with operating systerm primitives are handled by 
 operating system specific packages under the [`golang.org/x/sys`](https://godoc.org/golang.org/x/sys) 
@@ -237,7 +237,7 @@ terminal back to normal in most cases. Failing that, you can always restart
 your terminal emulator. We'll fix this whole problem in the next step.
 
 
-## Disable raw mode at exit
+## 6. Disable raw mode at exit
 
 Let's be nice to the user and restore their terminal's original attributes when
 our program exits. We'll save a copy of the `Termios` struct in its original
@@ -349,7 +349,7 @@ func main() {
 ```
 
 
-## Turn off canonical mode
+## 7. Turn off canonical mode
 
 There is an `ICANON` flag that allows us to turn off canonical mode. This means
 we will finally be reading input byte-by-byte, instead of line-by-line. Now the program will quit as soon as you press <kbd>q</kbd>. 
@@ -368,3 +368,107 @@ we will finally be reading input byte-by-byte, instead of line-by-line. Now the 
 
 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
 ```
+
+
+## 8. Display keypresses
+
+To get a better idea of how input in raw mode works, let's print out each byte
+that we read. We'll print each character's numeric ASCII value, as well as
+the character it represents if it is a printable character.
+
+
+Let's first create a small function `isCntrl()` to tests whether a character
+is a control character. Control characters are nonprintable characters
+that we don't want to print to the screen. ASCII codes 0&ndash;31 are 
+all control characters, and 127 is also a control character. ASCII 
+codes 32&ndash;126 are all printable. (Check out the
+[ASCII table](http://asciitable.com) to see all of the characters.)
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 8. Display Keypresses| main.go|
+
+```go
+
+	"os"
+)
+
+//######## Lines to Add/Change ##########
+
+func isCntrl(b byte) bool {
+	if b <= 0x1f || b == 0x7f {
+		return true
+	}
+	return false
+}
+
+//################################
+
+func main() {
+
+```
+
+
+`fmt.Printf()` can print multiple representations of a byte. `%d` tells it to
+format the byte as a decimal number (its ASCII code), and `%c` tells it to
+write out the byte directly, as a character.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 8. Display Keypresses| main.go|
+
+```go
+
+			fmt.Printf("Error reading from Stdin: %s\n", err)
+			os.Exit(1)
+		}
+
+        //######## Lines to Add/Change ##########
+
+		if isCntrl(b) {
+			fmt.Printf("%d\n", b)
+		} else {
+			fmt.Printf("%d (%c)\n", b, b)
+        }
+
+        //################################
+
+		if b == 'q' {
+
+```
+
+
+This is a very useful program. It shows us how various keypresses translate
+into the bytes we read. Most ordinary keys translate directly into the
+characters they represent. But try seeing what happens when you press the arrow
+keys, or <kbd>Escape</kbd>, or <kbd>Page Up</kbd>, or <kbd>Page Down</kbd>, or
+<kbd>Home</kbd>, or <kbd>End</kbd>, or <kbd>Backspace</kbd>, or
+<kbd>Delete</kbd>, or <kbd>Enter</kbd>. Try key combinations with
+<kbd>Ctrl</kbd>, like <kbd>Ctrl-A</kbd>, <kbd>Ctrl-B</kbd>, etc.
+
+You'll notice a few interesting things:
+
+* Arrow keys, <kbd>Page Up</kbd>, <kbd>Page Down</kbd>, <kbd>Home</kbd>, and
+  <kbd>End</kbd> all input 3 or 4 bytes to the terminal: `27`, `'['`, and then
+  one or two other characters. This is known as an *escape sequence*. All
+  escape sequences start with a `27` byte. Pressing <kbd>Escape</kbd> sends a
+  single `27` byte as input.
+* <kbd>Backspace</kbd> is byte `127`. <kbd>Delete</kbd> is a 4-byte escape
+  sequence.
+* <kbd>Enter</kbd> is byte `10`, which is a newline character, also known as
+  `'\n'`.
+* <kbd>Ctrl-A</kbd> is `1`, <kbd>Ctrl-B</kbd> is `2`, <kbd>Ctrl-C</kbd> is...
+  oh, that terminates the program, right. But the <kbd>Ctrl</kbd> key
+  combinations that do work seem to map the letters A&ndash;Z to the codes
+  1&ndash;26.
+
+On some consoles, if you happen to press <kbd>Ctrl-S</kbd>, you may find your program
+seems to be frozen. What you've done is you've asked your program to [stop
+sending you output](https://en.wikipedia.org/wiki/Software_flow_control). Press
+<kbd>Ctrl-Q</kbd> to tell it to resume sending you output.
+
+Also, if you press <kbd>Ctrl-Z</kbd> (or maybe <kbd>Ctrl-Y</kbd>), your program
+will be suspended to the background. Run the `fg` command to bring it back to
+the foreground but it may no longer be in raw mode. It may also quit immediately
+after you do that, as a result of the underlying File reader returning error.
+

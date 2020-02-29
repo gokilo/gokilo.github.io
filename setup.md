@@ -17,7 +17,7 @@ library and some tooling.
 
 # Pre-Requisites
 
-### Some flavor of Unix or Windows Sub-system for Linux
+## Some flavor of Unix or Windows Sub-system for Linux
 This tutorial interacts a lot with the terminal and assumes you will be
 working in a Unixy environment. If you are on a Windows 10 machine, it is
 recommended you install [Windows Sub-system for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) which gives you a Linux environment without the
@@ -37,13 +37,13 @@ A few tips if you use Windows Subsystem for Linux
 - Typing `code .` opens Visual Studio Code and loads the WSL current
   directory in the workspace if you have it installed
 
-### Setup the Go programming language distribution
+## Setup the Go programming language distribution
 [Install the Go language distribution](https://golang.org/doc/install) 
 on your development machine. Go 1.13 or higher is preferred. In many
 Linux distributions, the default Go version may be dated and so it 
 is recommended to install from the official website.
 
-### Setup your development environmnet for Go
+## Setup your development environmnet for Go
 Most modern text editors and many IDEs offer enhanced development 
 support for Go like syntax highlighting, code auto-formatting on save
 and auto-completion. Choose the programming text editor or IDE you
@@ -51,7 +51,7 @@ are be most familiar with and install Go language support:
 - Official [Editor Plugins and IDEs](https://golang.org/doc/editors.html) page
 - [Community maintained Editors and IDEs wiki](https://github.com/golang/go/wiki/IDEsAndTextEditorPlugins)
 
-### Get familiar code the development processs in Go
+## Get familiar code the development processs in Go
 This tutorial assumes you have a working knowledge of Go and will not
 teach basic language concepts and development workflows. If you are
 new to Go, please ensure you have gone through at least the following:
@@ -62,9 +62,9 @@ You may also find [Go by Example](https://gobyexample.com/) and
 [Effective Go](https://golang.org/doc/effective_go.html) to be valuable
 learning resources.
 
-# Development Setup
+# Getting ready for Development
 
-### Step 0: Setup your development directory
+## 0. Setup your development directory
 It is recommended that you create a remote git repository
 (eg. [GitHub](https://github.com/), [GitLab](https://about.gitlab.com/),
 [BitBucket](https://bitbucket.org/) etc. all have free tiers) to
@@ -79,7 +79,7 @@ Alternatively, create a directory for your project.
 $ mkdir gokilo
 ```
 
-### Step 1: Initializing a go module for development
+## 1. Initializing a go module for development
 Go versions from v1.11 onwards have support for modules to manage
 dependencies. For your project choose a module path of your own 
 (looking like `github.com/gokilo/gokilo` below) and initialize
@@ -100,7 +100,7 @@ $ go mod init github.com/gokilo/gokilo #replace repo path with your own
 repo. The commit titles in that repo will correspond to the ones shown
 in the table above each step.
 
-### Step 2: (Optional) Add a `.gitignore` file to your project
+## 2. (Optional) Add a `.gitignore` file to your project
 If you're version controlling using Git, now is  good time to
 addd a `.gitignore` file to ensure that generated binaries don't
 get checked in by mistake. Even if you're not using version

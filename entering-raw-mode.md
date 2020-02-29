@@ -562,3 +562,36 @@ flag that starts with `I` but actually belongs in the `Lflag` field.
 
 <kbd>Ctrl-V</kbd> can now be read as a `22` byte, and <kbd>Ctrl-O</kbd> as a
 `15` byte.
+
+
+## 12. Fix <kbd>Ctrl-M</kbd>
+
+If you run the program now and go through the whole alphabet while holding down
+<kbd>Ctrl</kbd>, you should see that we have every letter except <kbd>M</kbd>.
+<kbd>Ctrl-M</kbd> is weird: it's being read as `10`, when we expect it to be
+read as `13`, since it is the 13th letter of the alphabet, and
+<kbd>Ctrl-J</kbd> already produces a `10`. What else produces `10`? The
+<kbd>Enter</kbd> key does.
+
+It turns out that the terminal is helpfully translating any carriage returns
+(`13`, `'\r'`) inputted by the user into newlines (`10`, `'\n'`). Let's turn
+off this feature.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 12. Fix Ctrl-M | rawmode_unix.go|
+
+```go
+
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+    //######## Lines to Add/Change ##########
+	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
+    //################################
+
+```
+
+The `I` in `ICRNL` stands for "input flag", `CR` stands
+for "carriage return", and `NL` stands for "new line".
+
+Now <kbd>Ctrl-M</kbd> is read as a `13` (carriage return), and the
+<kbd>Enter</kbd> key is also read as a `13`.

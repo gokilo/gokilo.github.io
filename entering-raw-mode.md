@@ -40,9 +40,9 @@ func main() {
 
 ```
 
-In Go, the standard input device is exposed in the os package as 
-package level `os.File` type variable called `os.Stdin`. Rather
-than directly reading from the file C-style, we will prefer to
+In Go, the standard input device is exposed in the `os` package as 
+package level variable called `os.Stdin` which is of the `os.File`
+type. Rather than directly reading from the file C-style, we will prefer to
 use a buffered i/o reader provided by Go's standard `bufio` package 
 which automatically buffers key presses and provides convenient
 functions to read or peek a byte at a time. Since `os.File` 
@@ -139,14 +139,12 @@ function to carry out this operation in a new file in the same `main`
 package called `rawmode_unix.go` to take advantage of a powerful feature
 of go called build tags. In code below, take a look at the very first line
 `// +build linux` which tells the Go compiler to only use this file when
-building on Linux systems. This way, we can later port GoKilo to Windows
-by creating a `rawmode_windows.go` file containing `// +build windows` build
-tag with the appropriate system calls for windows but implementing the same
-function signature. The compiler will automatically use the OS-specific versions.
+building for Linux targets. This way, we can later port GoKilo to Windows
+by creating a platform appropriate implementation with `// +build windows` tag 
 
-**Note**: you may try `darwin` or `freebsd` etc. instead of `linux` if you're
-following the tutorial on those systems. Though I haven't tested it personally,
-all unixes should work about the same for this.
+**Note**: you may use `darwin` or `freebsd` etc. instead of `linux` if you're
+following the tutorial on those systems. I haven't tested it personally,
+but it should work.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
@@ -249,9 +247,9 @@ the program exits with a new function called `restore()`.
 Keeping platform portability in mind, `Termios` is not really defined
 on the Windows platform, so rather than have the `rawMode()` function
 return it directly, we will serialize it using Go's native `encoding/gob`
-package into a byte slice that can be saved and restored. Since Go supports
-multiple return values from functions, we can return both the byte slice
-and any error encountered.
+package into a byte slice that can be saved by he caller and passed back
+to be decoded and restored. Since Go supports multiple return values
+from functions, we can return both the byte slice and any error encountered.
 
 
 | **Commit Title** | **File** |
@@ -262,13 +260,13 @@ and any error encountered.
 
 import (
     //######## Lines to Add/Change ##########
-	"bytes"
+    "bytes"
     "encoding/gob"
     //################################
 
-	"fmt"
+    "fmt"
 
-	"golang.org/x/sys/unix"
+    "golang.org/x/sys/unix"
 )
 
 //######## Lines to Add/Change ##########
@@ -313,6 +311,17 @@ func restore(original []byte) error {
 
 ```
 
+In the `main()` function, we store the serialized version of the 
+original `Termios` settings in byte slice called `origTermios`.
+We can now `defer` a call to `restore()` passing `origTermios`
+that will cause `restore()` to be called automatically when the
+program exits, whether it exits by returning from `main()`, or
+by calling the `exit()` function. 
+
+Instead of calling `restore()` directly in defer, let us wrap it
+in a [function clousure](https://tour.golang.org/moretypes/25) to
+let us handle any errors that may happen during the call. Using defer 
+and function clousures lets us avoid global variables.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
@@ -339,14 +348,4 @@ func main() {
 
 ```
 
-We store the serialized original terminal attributes in a variable
-in the `main()` function called `origTermios`. We will then `defer`
-a function clousure call that wraps a call to the `restore()` function
-passing the `origTermios` variable that is in scope within the `main()`
-function. The `defer` keyword will cause our `restore()` function to be
-called automatically when the program exits, whether it exits by
-returning from `main()`, or by calling the `exit()` function. This way
-we can ensure we'll leave the terminal attributes the way we found them
-when our program exits. In Go, by combining `defer` with function clousures
-we can avoid global state variables and also not skimp on error handling.
 

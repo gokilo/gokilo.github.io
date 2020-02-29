@@ -618,11 +618,12 @@ and I assume `POST` stands for "post-processing of output".
 
 ```go
 
-	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
-	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
+    termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+    termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
     //######## Lines to Add/Change ##########
     termios.Oflag = termios.Oflag &^ (unix.OPOST)
     //################################
+
 ```
 
 ## 14. Fix carriage returns
@@ -638,6 +639,7 @@ side of the screen. To fix that, let's add carriage returns to our
 
 ```go 
 
+//######## Lines to Add/Change ##########
 func main() {
 
 	origTermios, err := rawMode()
@@ -675,8 +677,54 @@ func main() {
 		}
 	}
 }
+//################################
 
 ```
 
 From now on, we'll have to write out the full `"\r\n"` whenever we want
 to start a new line.
+
+
+## 15. Miscellaneous flags
+
+Let's turn off a few more flags. `BRKINT`, `INPCK`, `ISTRIP`, and `CS8`.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 15. Miscellaneous flags | main.go|
+
+```go 
+
+    termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+
+    //######## Lines to Add/Change ##########
+    termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL | unix.BRKINT | unix.INPCK | unix.ISTRIP)
+    //################################
+
+    termios.Oflag = termios.Oflag &^ (unix.OPOST)
+
+    //######## Lines to Add/Change ##########
+    termios.Cflag = termios.Cflag | unix.CS8
+    //################################
+
+```
+
+This step probably won't have any observable effect for you, because these
+flags are either already turned off, or they don't really apply to modern
+terminal emulators. But at one time or another, switching them off was
+considered (by someone) to be part of enabling "raw mode", so we carry on the
+tradition (of whoever that someone was) in our program.
+
+As far as I can tell:
+
+* When `BRKINT` is turned on, a
+  [break condition](https://www.cmrr.umn.edu/~strupp/serial.html#2_3_3) will
+  cause a `SIGINT` signal to be sent to the program, like pressing `Ctrl-C`.
+* `INPCK` enables parity checking, which doesn't seem to apply to modern
+  terminal emulators.
+* `ISTRIP` causes the 8th bit of each input byte to be stripped, meaning it
+  will set it to `0`. This is probably already turned off.
+* `CS8` is not a flag, it is a bit mask with multiple bits, which we set using
+  the bitwise-OR (`|`) operator unlike all the flags we are turning off. It
+  sets the character size (CS) to 8 bits per byte. On my system, it's already
+  set that way.

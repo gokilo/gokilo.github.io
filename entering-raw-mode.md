@@ -595,3 +595,33 @@ for "carriage return", and `NL` stands for "new line".
 
 Now <kbd>Ctrl-M</kbd> is read as a `13` (carriage return), and the
 <kbd>Enter</kbd> key is also read as a `13`.
+
+## 13. Turn off all output processing
+
+It turns out that the terminal does a similar translation on the output side.
+It translates each newline (`"\n"`) we print into a carriage return followed by
+a newline (`"\r\n"`). The terminal requires both of these characters in order
+to start a new line of text. The carriage return moves the cursor back to the
+beginning of the current line, and the newline moves the cursor down a line,
+scrolling the screen if necessary. (These two distinct operations originated in
+the days of typewriters and
+[teletypes](https://en.wikipedia.org/wiki/Teleprinter).)
+
+We will turn off all output processing features by turning off the `OPOST`
+flag. In practice, the `"\n"` to `"\r\n"` translation is likely the only output
+processing feature turned on by default. `O` means it's an output flag,
+and I assume `POST` stands for "post-processing of output".
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 13. Turn off all output processing | rawmode_unix.go|
+
+```go
+
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
+    //######## Lines to Add/Change ##########
+    termios.Oflag = termios.Oflag &^ (unix.OPOST)
+    //################################
+```
+

@@ -625,3 +625,58 @@ and I assume `POST` stands for "post-processing of output".
     //################################
 ```
 
+## 14. Fix carriage returns
+
+If you ran the program after turning off `OPOST`, you'll see that the newline
+characters we're printing are only moving the cursor down, and not to the left
+side of the screen. To fix that, let's add carriage returns to our 
+`fmt.Printf()` statements.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 14. Fix carriage returns | main.go|
+
+```go 
+
+func main() {
+
+	origTermios, err := rawMode()
+	if err != nil {
+		fmt.Printf("Error: %s\r\n", err)
+		os.Exit(1)
+	}
+
+	defer func() {
+		if err := restore(origTermios); err != nil {
+			fmt.Printf("Error: %s\r\n", err)
+		}
+	}()
+
+	r := bufio.NewReader(os.Stdin)
+
+	for {
+		b, err := r.ReadByte()
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Printf("Error reading from Stdin: %s\r\n", err)
+			os.Exit(1)
+		}
+
+		if isCntrl(b) {
+			fmt.Printf("%d\r\n", b)
+		} else {
+			fmt.Printf("%d (%c)\r\n", b, b)
+		}
+
+		if b == 'q' {
+			break
+		}
+	}
+}
+
+```
+
+From now on, we'll have to write out the full `"\r\n"` whenever we want
+to start a new line.

@@ -728,3 +728,124 @@ As far as I can tell:
   the bitwise-OR (`|`) operator unlike all the flags we are turning off. It
   sets the character size (CS) to 8 bits per byte. On my system, it's already
   set that way.
+
+## 16. Safe Exit
+
+Now that we are able to get into raw mode and also restore safely, 
+let's create a helper function that we can call anywhere from our program
+to exit raw mode safely, show error messages if any and indicate to the
+OS whether we exited cleanly or with errors. 
+
+To do this, we are going to take advantage of a feature of Go called
+[First Class Functions](https://golang.org/doc/codewalk/functions/) in which
+we can treat functions as we would treat any other variables and structs.
+
+Let us first create a globally accessible variable `safeExit` which takes
+the type `func(error)`. In other words, we can assign to this variable any
+function that takes an `error` as a parameter and returns nothing.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 16. Safe Exit | main.go|
+
+```go
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+)
+
+//######## Lines to Add/Change ##########
+var safeExit func(error)
+//################################
+
+func isCntrl(b byte) bool {
+
+```
+
+Then after we get `origTermios` by calling `rawMode()`, we can set
+`safeExit` to such an anonymous function that restores `origTermios` 
+and also prints an error message if `safeExit` was called with a 
+non-`nil` error value similar to what we were doing previously in
+the `defer` statement. One tweak here is we explictly now log error
+messages to `os.Stderr` which is where by convention operating systems
+expect error messages to show up. To do this, we can use `fmt.Fprintf`
+funciton which allows us to send output to anything that implements
+the standard `io.Writer` interface which `os.Stderr` does. We take this
+opportunity to also make the same change in the code that handles
+failure to enter raw mode.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 16. Safe Exit | main.go|
+
+```go
+
+	origTermios, err := rawMode()
+	if err != nil {
+        
+        //######## Lines to Add/Change ##########
+		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+        //################################
+
+		os.Exit(1)
+	}
+
+    //######## Lines to Add/Change ##########
+	safeExit = func(err error) {
+		if errRestore := restore(origTermios); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: disabling raw mode: %s\r\n", errRestore)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+    //################################
+
+```
+
+Finally, we can simply change the `defer` statement to call 
+`safeExit(nil)` to call it with no error and similarly change
+the places we need to exit with error to `safeExit(err)`
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 16. Safe Exit | main.go|
+
+```go
+
+    //######## Lines to Add/Change ##########
+	defer safeExit(nil)
+    //################################
+
+	r := bufio.NewReader(os.Stdin)
+
+	for {
+		b, err := r.ReadByte()
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+            //######## Lines to Add/Change ##########
+                safeExit(err)
+            //################################
+		}
+
+		if isCntrl(b) {
+```
+
+An easy way to make `rawMode()` fail is to give your program a text file or a
+pipe as the standard input instead of your terminal. To give it a file as
+standard input, run `./gokilo < main.go`. To give it a pipe, run
+`echo test | ./gokilo`. Both should result in an error like 
+`inappropriate ioctl for device`.
+
+That just about concludes this chapter on entering raw mode. In the
+[next chapter](/raw-input-and-output.html), we'll do some more low-level
+terminal input/output handling, and use that to draw to the screen and allow
+the user to move the cursor around.

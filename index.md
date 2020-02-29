@@ -22,7 +22,11 @@ of this is that **you are going to build a text editor from scratch**!
 Anything you learn along the way is bonus, and there's plenty to learn 
 just from typing in the changes to the code and observing the results.
 
-See the appendices for more information on the 
+See the appendices (TBD) for more information on the 
 tutorial itself (including what to do if you get stuck,
-and where to get help). If you're ready to start then go on to
+and where to get help). The code changes for each step of the tutorial
+is also available in a [GitHub Repo](https://github.com/gokilo/gokilo) 
+for reference with numbered commits linked to the tutorial.
+
+If you're ready to start then go on to
 [Setup](/setup.html)

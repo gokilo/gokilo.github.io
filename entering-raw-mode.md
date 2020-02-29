@@ -349,3 +349,22 @@ func main() {
 ```
 
 
+## Turn off canonical mode
+
+There is an `ICANON` flag that allows us to turn off canonical mode. This means
+we will finally be reading input byte-by-byte, instead of line-by-line. Now the program will quit as soon as you press <kbd>q</kbd>. 
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 7. Turn off canonical mode| rawmode_unix.go|
+
+```go
+		return nil, fmt.Errorf("could not serialize console settings: %w", err)
+	}
+
+    //######## Lines to Add/Change ##########
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON)
+    //################################
+
+	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+```

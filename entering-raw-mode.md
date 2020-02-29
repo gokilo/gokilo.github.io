@@ -472,3 +472,32 @@ will be suspended to the background. Run the `fg` command to bring it back to
 the foreground but it may no longer be in raw mode. It may also quit immediately
 after you do that, as a result of the underlying File reader returning error.
 
+## 9. Turn off <kbd>Ctrl-C</kbd> and <kbd>Ctrl-Z</kbd> signals
+
+By default, <kbd>Ctrl-C</kbd> sends a `SIGINT` signal to the current process
+which causes it to terminate, and <kbd>Ctrl-Z</kbd> sends a `SIGTSTP` signal to
+the current process which causes it to suspend. Let's turn off the sending of
+both of these signals.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 9. Turn off Ctrl-C and Ctrl-Z signals| rawmode_unix.go|
+
+```go
+
+    //######## Lines to Add/Change ##########
+
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
+
+    //################################
+```
+
+`ISIG` comes from `<termios.h>`. Like `ICANON`, it starts with `I` but isn't an
+input flag.
+
+Now <kbd>Ctrl-C</kbd> can be read as a `3` byte and <kbd>Ctrl-Z</kbd> can be
+read as a `26` byte.
+
+This also disables <kbd>Ctrl-Y</kbd> on macOS, which is like <kbd>Ctrl-Z</kbd>
+except it waits for the program to read input before suspending it.
+

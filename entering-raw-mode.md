@@ -501,3 +501,35 @@ read as a `26` byte.
 This also disables <kbd>Ctrl-Y</kbd> on macOS, which is like <kbd>Ctrl-Z</kbd>
 except it waits for the program to read input before suspending it.
 
+
+## 10. Disable <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd>
+
+By default, <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd> are used for
+[software flow control](https://en.wikipedia.org/wiki/Software_flow_control).
+<kbd>Ctrl-S</kbd> stops data from being transmitted to the terminal until you
+press <kbd>Ctrl-Q</kbd>. This originates in the days when you might want to
+pause the transmission of data to let a device like a printer catch up. Let's
+just turn off that feature.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 10. Disable Ctrl-S and Ctrl-Q | rawmode_unix.go|
+
+```go
+
+
+    termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
+
+    //######## Lines to Add/Change ##########
+	termios.Iflag = termios.Iflag &^ (unix.IXON)
+    //################################
+
+```
+
+The `I` in `IXON` stands for "input flag" (which it is, unlike the 
+other `L` flags we've seen so far) and `XON` comes from the names of
+the two control characters that <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd>
+produce: `XOFF` to pause transmission and `XON` to resume transmission.
+
+Now <kbd>Ctrl-S</kbd> can be read as a `19` byte and <kbd>Ctrl-Q</kbd> can be
+read as a `17` byte.

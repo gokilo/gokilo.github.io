@@ -7,8 +7,8 @@
 - name: Entering raw mode
   link: /entering-raw-mode.html
 
-#- name: Raw input and output
-#  link: /raw-input-and-output.html
+- name: Raw input and output
+  link: /raw-input-and-output.html
 
 #- name: A text viewer
 #  link: /a-text-viewer.html

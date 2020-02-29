@@ -318,7 +318,7 @@ that will cause `restore()` to be called automatically when the
 program exits, whether it exits by returning from `main()`, or
 by calling the `exit()` function. 
 
-Instead of calling `restore()` directly in defer, let us wrap it
+Also instead of calling `restore()` directly in defer, let us wrap it
 in a [function clousure](https://tour.golang.org/moretypes/25) to
 let us handle any errors that may happen during the call. Using defer 
 and function clousures lets us avoid global variables.
@@ -344,7 +344,7 @@ func main() {
 		}
     }()
 
-	//################################
+    //################################
 
 ```
 

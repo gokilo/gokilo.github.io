@@ -121,13 +121,40 @@ after your program exits.
 ## Turn off echoing
 
 
+
+In Go, interactions with operating systerm primitives are handled by 
+operating system specific packages under the [`golang.org/x/sys`](https://godoc.org/golang.org/x/sys) 
+namespace . To get and control terminal attributes in Unix, we can
+use the `IoctlGetTermios()` and `IoctlSetTermios()` functions from 
+the `unix` package which mirror the more traditional `tcgetattr()` 
+and `tcsetattr()` functions in the Unix C library.
+
+We can set a terminal's attributes by
+1. Reading the current terminal attributes into a `unix.Termios` struct
+2. Modifying the value of one or more fields in the struct with bit manipulation
+3. Writing back out the modified terminal attributes.
+
+Let's try turning off the `ECHO` feature this way. We will create the 
+function to carry out this operation in a new file in the same `main`
+package called `rawmode_unix.go` to take advantage of a powerful feature
+of go called build tags. In code below, take a look at the very first line
+`// +build linux` which tells the Go compiler to only use this file when
+building on Linux systems. This way, we can later port GoKilo to Windows
+by creating a `rawmode_windows.go` file containing `// +build windows` build
+tag with the appropriate system calls for windows but implementing the same
+function signature. The compiler will automatically use the OS-specific versions.
+
+**Note**: you may try `darwin` or `freebsd` etc. instead of `linux` if you're
+following the tutorial on those systems. Though I haven't tested it personally,
+all unixes should work about the same for this.
+
 | **Commit Title** | **File** |
 |:-----------------|---------:|
 | 5. Turn off echoing | rawmode_unix.go|
 
 ```go
 
-// +build !windows
+// +build linux
 
 package main 
 
@@ -175,3 +202,38 @@ func main() {
 
 	r := bufio.NewReader(os.Stdin)
 ```
+
+The `unix.ECHO` feature causes each key you type to be printed to the terminal, so
+you can see what you're typing. This is useful in canonical mode, but really
+gets in the way when we are trying to carefully render a user interface in raw
+mode. So we turn it off. This program does the same thing as the one in the
+previous step, it just doesn't print what you are typing. You may be familiar
+with this mode if you've ever had to type a password at the terminal, when
+using `sudo` for example.
+
+Terminal attributes can be read into a `Termios` struct by `IoctlGetTermios()`.
+After modifying them, you can then apply them to the terminal using 
+`IoctlSetTermios()`. The `unix.TCSETFSF` (ie. Flush) argument specifies
+when to apply the change: in this case, it waits for all pending output to
+be written to the terminal, and also discards any input that hasn't been read.
+
+The `Termios.Lflag` field is for "miscellaneous flags". The other flag
+fields are `Termios.Iflag` (input flags), `Termios.Oflag` (output flags), and
+`Termios.Cflag` (control flags), most of which we will have to modify to
+enable raw mode.
+
+`unix.ECHO` is a [bitflag](https://en.wikipedia.org/wiki/Bit_field), defined as
+`00000000000000000000000000001000` in binary. We use the bitwise-NOT operator
+(`~`) on this value to get `11111111111111111111111111110111`. We then
+bitwise-AND this value with the flags field, which forces the fourth bit in the
+flags field to become `0`, and causes every other bit to retain its current
+value. Flipping bits like this is common in systems proramming.
+
+We finally add a call to this function in our `main()` function at the beginning.
+
+After the program quits, depending on your shell, you may find your terminal is
+still not echoing what you type. Don't worry, it will still listen to what you
+type. Just press <kbd>Ctrl-C</kbd> to start a fresh line of input to your
+shell, and type in `reset` and press <kbd>Enter</kbd>. This resets your
+terminal back to normal in most cases. Failing that, you can always restart
+your terminal emulator. We'll fix this whole problem in the next step.

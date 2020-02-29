@@ -237,3 +237,116 @@ type. Just press <kbd>Ctrl-C</kbd> to start a fresh line of input to your
 shell, and type in `reset` and press <kbd>Enter</kbd>. This resets your
 terminal back to normal in most cases. Failing that, you can always restart
 your terminal emulator. We'll fix this whole problem in the next step.
+
+
+## Disable raw mode at exit
+
+Let's be nice to the user and restore their terminal's original attributes when
+our program exits. We'll save a copy of the `Termios` struct in its original
+state, and use `unix.IoctlSetTermios()` to apply it to the terminal when 
+the program exits with a new function called `restore()`.
+
+Keeping platform portability in mind, `Termios` is not really defined
+on the Windows platform, so rather than have the `rawMode()` function
+return it directly, we will serialize it using Go's native `encoding/gob`
+package into a byte slice that can be saved and restored. Since Go supports
+multiple return values from functions, we can return both the byte slice
+and any error encountered.
+
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 6. Disable raw mode at exit| rawmode_unix.go|
+
+```go
+
+import (
+    //######## Lines to Add/Change ##########
+	"bytes"
+    "encoding/gob"
+    //################################
+
+	"fmt"
+
+	"golang.org/x/sys/unix"
+)
+
+//######## Lines to Add/Change ##########
+
+func rawMode() ([]byte, error) {
+
+	termios, err := unix.IoctlGetTermios(unix.Stdin, unix.TCGETS)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch console settings: %s", err)
+	}
+
+	buf := bytes.Buffer{}
+	if err := gob.NewEncoder(&buf).Encode(termios); err != nil {
+		return nil, fmt.Errorf("could not serialize console settings: %w", err)
+	}
+
+	termios.Lflag = termios.Lflag &^ unix.ECHO
+
+	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+		return nil, fmt.Errorf("could not set console settings: %s", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Restore restoes the console to a previous row setting
+func restore(original []byte) error {
+
+	var termios unix.Termios
+
+	if err := gob.NewDecoder(bytes.NewReader(original)).Decode(&termios); err != nil {
+		return fmt.Errorf("could not decode original console settings: %w", err)
+	}
+
+	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, &termios); err != nil {
+		return fmt.Errorf("could not restore original console settings: %w", err)
+	}
+	return nil
+}
+
+//################################
+
+```
+
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 6. Disable raw mode at exit| main.go|
+
+```go
+func main() {
+
+    //######## Lines to Add/Change ##########
+
+	origTermios, err := rawMode()
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	defer func() {
+		if err := restore(origTermios); err != nil {
+			fmt.Printf("Error: %s\n", err)
+		}
+    }()
+
+	//################################
+
+```
+
+We store the serialized original terminal attributes in a variable
+in the `main()` function called `origTermios`. We will then `defer`
+a function clousure call that wraps a call to the `restore()` function
+passing the `origTermios` variable that is in scope within the `main()`
+function. The `defer` keyword will cause our `restore()` function to be
+called automatically when the program exits, whether it exits by
+returning from `main()`, or by calling the `exit()` function. This way
+we can ensure we'll leave the terminal attributes the way we found them
+when our program exits. In Go, by combining `defer` with function clousures
+we can avoid global state variables and also not skimp on error handling.
+

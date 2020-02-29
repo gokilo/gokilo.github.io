@@ -533,3 +533,32 @@ produce: `XOFF` to pause transmission and `XON` to resume transmission.
 
 Now <kbd>Ctrl-S</kbd> can be read as a `19` byte and <kbd>Ctrl-Q</kbd> can be
 read as a `17` byte.
+
+
+## 11. Disable <kbd>Ctrl-V</kbd>
+
+On some systems, when you type <kbd>Ctrl-V</kbd>, the terminal waits for you to
+type another character and then sends that character literally. For example,
+before we disabled <kbd>Ctrl-C</kbd>, you might've been able to type
+<kbd>Ctrl-V</kbd> and then <kbd>Ctrl-C</kbd> to input a `3` byte. We can turn
+off this feature using the `IEXTEN` flag.
+
+Turning off `IEXTEN` also fixes <kbd>Ctrl-O</kbd> in macOS, whose terminal
+driver is otherwise set to discard that control character. It is another
+flag that starts with `I` but actually belongs in the `Lflag` field.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 11. Disable Ctrl-V | rawmode_unix.go|
+
+```go
+
+    //######## Lines to Add/Change ##########
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+    //################################
+    termios.Iflag = termios.Iflag &^ (unix.IXON)
+
+```
+
+<kbd>Ctrl-V</kbd> can now be read as a `22` byte, and <kbd>Ctrl-O</kbd> as a
+`15` byte.

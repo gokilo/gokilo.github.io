@@ -285,6 +285,10 @@ screen. Let's reposition it at the top-left corner so that we're ready to draw
 the editor interface from top to bottom. We'll also start commenting these on
 these escape sequences for easy future reference.
 
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 19. Reposition the cursor | screen.go|
+
 ```go
 // --
 func refreshScreen(){

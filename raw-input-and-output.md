@@ -194,7 +194,7 @@ func main(){
 }
 ```
 
-## Clear the screen
+## 18. Clear the screen
 
 We're going to render the editor's user interface to the screen after each
 keypress. Let's start by just clearing the screen.
@@ -276,4 +276,37 @@ the [ncurses](https://en.wikipedia.org/wiki/Ncurses) library, which uses the
 [terminfo](https://en.wikipedia.org/wiki/Terminfo) database to figure out the
 capabilities of a terminal and what escape sequences to use for that particular
 terminal.
+
+
+## 19. Reposition the cursor
+
+You may notice that the `<esc>[2J` command left the cursor at the bottom of the
+screen. Let's reposition it at the top-left corner so that we're ready to draw
+the editor interface from top to bottom. We'll also start commenting these on
+these escape sequences for easy future reference.
+
+```go
+// --
+func refreshScreen(){
+
+	//######## Lines to Add/Change ##########
+	// Clear the Screen
+	fmt.Fprint(os.Stdout, "\x1b[2J")
+
+	// Reposition the cursor
+	fmt.Fprint(os.Stdout, "\x1b[H")
+	//####################################### 
+}
+```
+
+This escape sequence is only `3` bytes long, and uses the `H` command
+([Cursor Position](http://vt100.net/docs/vt100-ug/chapter3.html#CUP)) to
+position the cursor. The `H` command actually takes two arguments: the row
+number and the column number at which to position the cursor. So if you have an
+80&times;24 size terminal and you want the cursor in the center of the screen, you could
+use the command `<esc>[12;40H`. (Multiple arguments are separated by a `;`
+character.) The default arguments for `H` both happen to be `1`, so we can
+leave both arguments out and it will position the cursor at the first row and
+first column, as if we had sent the `<esc>[1;1H` command. (Rows and columns are
+numbered starting at `1`, not `0`.)
 

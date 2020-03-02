@@ -194,4 +194,86 @@ func main(){
 }
 ```
 
+## Clear the screen
+
+We're going to render the editor's user interface to the screen after each
+keypress. Let's start by just clearing the screen.
+
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 18. Clear the screen | screen.go|
+
+```go
+
+package main 
+
+import (
+	"fmt"
+	"os"
+)
+
+func refreshScreen(){
+	fmt.Fprint(os.Stdout, "\x1b[2J")
+}
+
+```
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 18. Clear the screen | main.go|
+
+```go
+
+// --
+
+func main() {
+
+	// ---
+
+	kr := NewKeyReader()
+
+	for {
+
+		//######## Lines to Add/Change ##########
+		refreshScreen()
+		//####################################### 
+
+		processKeyPress(kr)
+	}
+}
+
+```
+
+We're using `fmt.Fprint()` function from the `fmt` package to
+send characters out to the screen via `os.Stdout`. We are sending
+for bytes to the screen. The first byte is `\x1b`, which is the
+escape character, or `27` in decimal. (Try and remember `\x1b`, 
+we will be using it a lot.) The other three bytes are `[2J`.
+
+We are writing an *escape sequence* to the terminal. Escape sequences always
+start with an escape character (`27`) followed by a `[` character. Escape
+sequences instruct the terminal to do various text formatting tasks, such as
+coloring text, moving the cursor around, and clearing parts of the screen.
+
+We are using the `J` command
+([Erase In Display](http://vt100.net/docs/vt100-ug/chapter3.html#ED)) to clear
+the screen. Escape sequence commands take arguments, which come before the
+command. In this case the argument is `2`, which says to clear the entire
+screen. `<esc>[1J` would clear the screen up to where the cursor is, and
+`<esc>[0J` would clear the screen from the cursor up to the end of the screen.
+Also, `0` is the default argument for `J`, so just `<esc>[J` by itself would
+also clear the screen from the cursor to the end.
+
+For our text editor, we will be mostly using
+[VT100](https://en.wikipedia.org/wiki/VT100) escape sequences, which
+are supported very widely by modern terminal emulators. See the
+[VT100 User Guide](http://vt100.net/docs/vt100-ug/chapter3.html) for complete
+documentation of each escape sequence.
+
+If we wanted to support the maximum number of terminals out there, we could use
+the [ncurses](https://en.wikipedia.org/wiki/Ncurses) library, which uses the
+[terminfo](https://en.wikipedia.org/wiki/Terminfo) database to figure out the
+capabilities of a terminal and what escape sequences to use for that particular
+terminal.
 

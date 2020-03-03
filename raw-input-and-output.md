@@ -356,7 +356,6 @@ It's time to start drawing. Let's draw a column of tildes (`~`) on the left
 hand side of the screen, like [vim](http://www.vim.org/) does. In our text
 editor, we'll draw a tilde at the beginning of any lines that come after the
 end of the file being edited.
-
 | **Commit Title** | **File** |
 |:-----------------|---------:|
 | 21. Tildes | screen.go|
@@ -401,3 +400,99 @@ draw. For now we just draw `24` rows.
 
 After we're done drawing, we do another `<esc>[H` escape sequence to reposition
 the cursor back up at the top-left corner.
+
+## 22. State variables
+
+Our next goal is to get the size of the terminal, so we know how many rows to
+draw in `drawRows()`. These kinds of variables represent the **state** of the 
+running instance of the program. Storing state like this in global variables
+isn't great practice but luckily Go being a fairly modern language has the
+concepts of structs and methods. So let's create a `Screen` struct that will
+store stateful data like the number or rows and columns in it and a `NewScreen()`
+function to initialize a screen. 
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 22. State Variables | screen.go|
+
+```go
+package main 
+
+import (
+	"fmt"
+	"os"
+)
+
+type Screen struct{
+	Rows int
+	Cols int
+}
+
+func NewScreen(rows, cols int) *Screen{
+	return &Screen{rows, cols}
+}
+
+func (s *Screen) DrawRows(){
+	for y := 0; y < s.Rows; y++{
+		fmt.Fprint(os.Stdout, "~\r\n")
+	}
+}
+
+func (s *Screen) Refresh(){
+
+	// Clear the Screen
+	fmt.Fprint(os.Stdout, "\x1b[2J")
+
+	// Reposition the cursor
+	fmt.Fprint(os.Stdout, "\x1b[H")
+
+	s.DrawRows()
+
+	// Reposition the cursor
+	fmt.Fprint(os.Stdout, "\x1b[H")
+}
+```
+
+We can make functions like `DrawRows()` and `Refresh()` that use these
+screen state variables methods of the `Screen` struct. While Go is not
+an object oriented language, this gives us nice idioms like 
+`Screen.Refresh()` or `Screen.DrawRows()`.
+
+Note the capitalization of the first Letters of the struct & the functions
+indicating **exported** symbols. While in this case it doesn't matter
+much as all private & public methods are accessible within the same 
+package, creating methods this way lets us potentially modularize
+these in the future. Also note the use of Pointer method receivers
+to avoid making copies of the underlying struct when calling.
+
+Finally, let's initialize a `Screen` struct variable in our `main()`
+and the call its `Refresh()` method. For now let's hard code values
+of 24 rows and 80 cols. In the next section, we'll figure out the 
+actual screen size.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 22. State Variables | screen.go|
+```go
+// --
+
+func main(){
+
+	//--
+	
+	kr := NewKeyReader()
+
+	//######## Lines to Add/Change ##########
+	screen := NewScreen(24, 80)
+	//####################################### 
+
+	for {
+		//######## Lines to Add/Change ##########
+		screen.Refresh()
+		//####################################### 
+
+		processKeyPress(kr)
+	}
+}
+
+```

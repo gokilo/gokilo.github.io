@@ -314,3 +314,37 @@ leave both arguments out and it will position the cursor at the first row and
 first column, as if we had sent the `<esc>[1;1H` command. (Rows and columns are
 numbered starting at `1`, not `0`.)
 
+## 20. Clear the screen on exit
+
+Let's clear the screen and reposition the cursor when our program exits. If an
+error occurs in the middle of rendering the screen, we don't want a bunch of
+garbage left over on the screen, and we don't want the error to be printed
+wherever the cursor happens to be at that point.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 20. Clear the screen on exit| main.go|
+
+```go
+// --
+func main(){
+	// --
+	safeExit = func(err error) {
+
+		//######## Lines to Add/Change ##########
+		fmt.Fprint(os.Stdout, "\x1b[2J")
+		fmt.Fprint(os.Stdout , "\x1b[H")
+		//####################################### 
+
+		if errRestore := restore(origTermios); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: disabling raw mode: %s\r\n", errRestore)
+		}
+		// --
+	}
+	// --
+}
+
+```
+
+We exit only by the `safeExit()` function, so we have to have to add the commands
+to clear screen and reposition cursor only there. 

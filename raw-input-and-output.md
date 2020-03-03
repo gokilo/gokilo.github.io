@@ -348,3 +348,56 @@ func main(){
 
 We exit only by the `safeExit()` function, so we have to have to add the commands
 to clear screen and reposition cursor only there. 
+
+
+## 21. Tildes
+
+It's time to start drawing. Let's draw a column of tildes (`~`) on the left
+hand side of the screen, like [vim](http://www.vim.org/) does. In our text
+editor, we'll draw a tilde at the beginning of any lines that come after the
+end of the file being edited.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 21. Tildes | screen.go|
+
+```go
+
+import (
+	//--
+)
+
+//######## Lines to Add/Change ##########
+func drawRows(){
+	for y := 0; y < 24; y++{
+		fmt.Fprint(os.Stdout, "~\r\n")
+	}
+}
+//####################################### 
+
+func refreshScreen(){
+
+	// Clear the Screen
+	fmt.Fprint(os.Stdout, "\x1b[2J")
+
+	// Reposition the cursor
+	fmt.Fprint(os.Stdout, "\x1b[H")
+
+	//######## Lines to Add/Change ##########
+	drawRows()
+
+	// Reposition the cursor
+	fmt.Fprint(os.Stdout, "\x1b[H")
+	//####################################### 
+}
+```
+
+`drawRows()` will handle drawing each row of the buffer of text being
+edited. For now it draws a tilde in each row, which means that row is not part
+of the file and cannot contain any text.
+
+We don't know the size of the terminal yet, so we don't know how many rows to
+draw. For now we just draw `24` rows.
+
+After we're done drawing, we do another `<esc>[H` escape sequence to reposition
+the cursor back up at the top-left corner.

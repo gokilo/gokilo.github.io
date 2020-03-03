@@ -473,6 +473,7 @@ actual screen size.
 | **Commit Title** | **File** |
 |:-----------------|---------:|
 | 22. State Variables | screen.go|
+
 ```go
 // --
 

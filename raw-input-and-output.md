@@ -497,3 +497,72 @@ func main(){
 }
 
 ```
+
+## 24. Window size
+
+On most systems, you should be able to get the size of the terminal by simply
+calling `IoctlGetWinsize()`with the `TIOCGWINSZ` request. (As far as I can tell, it
+stands for **T**erminal **IOC**tl (which itself stands for **I**nput/**O**utput
+**C**on**t**ro**l**) **G**et **WIN**dow **S**i**Z**e. Since this is Unix specific
+we will place this in `rawmode_unix.go`.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 24. Window size| rawmode_unix.go|
+
+```go
+// getWindowSize returns the number of rows and columns on screen in that order
+func getWindowSize() (int, int, error) {
+
+	ws, err := unix.IoctlGetWinsize(unix.Stdout, unix.TIOCGWINSZ)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error fetching window size: %w", err)
+	}
+	if ws.Row == 0 || ws.Col == 0 {
+		return 0, 0, fmt.Errorf("Got a zero size column or row")
+	}
+
+	return int(ws.Row), int(ws.Col), nil
+}
+```
+
+On success, `IoctlGetWinsize()` will place the number of columns wide
+and the number of rows high the terminal is into the given `winsize`
+struct. On failure. We also check to make sure the values it gave back
+weren't `0`, because apparently that's a possible erroneous outcome. If
+`IoctlGetWinsize()` failed in either way, we have `getWindowSize()` report
+the error. If it succeeded, we return the values back taking advantage
+again of the multiple return values feature of Go language.
+
+Now let's initialize our `Screen` by passing the `rows` and `calls` 
+obtained from `getWindowSize()` in `main.go`.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 24. Window size| rawmode_unix.go|
+
+```go
+
+//--
+
+func main(
+
+	//--
+
+	//######## Lines to Add/Change ##########
+	rows, cols, err := getWindowSize()
+	if err != nil {
+		safeExit(err)
+	}
+	screen := NewScreen(rows, cols)
+
+	//####################################### 
+
+	for {
+		//--
+	}
+}
+```
+
+This change will display the proper number of tildes on the screen.
+

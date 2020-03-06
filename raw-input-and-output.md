@@ -566,3 +566,30 @@ func main(
 
 This change will display the proper number of tildes on the screen.
 
+## 25. The last line
+
+Maybe you noticed the last line of the screen doesn't seem to have a tilde.
+That's because of a small bug in our code. When we print the final tilde, we
+then print a `"\r\n"` like on any other line, but this causes the terminal to
+scroll in order to make room for a new, blank line. Let's make the last line an
+exception when we print our `"\r\n"`'s.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| 25. The last line | screen.go|
+
+```go
+
+//--
+
+func (s *Screen) DrawRows() {
+	for y := 0; y < s.Rows; y++ {
+		fmt.Fprint(os.Stdout, "~")
+		if y < s.Rows-1 {
+			fmt.Fprint(os.Stdout, "\r\n")
+		}
+	}
+}
+
+```
+

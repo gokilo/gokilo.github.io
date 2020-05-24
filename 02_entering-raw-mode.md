@@ -87,28 +87,35 @@ To exit the above program, press <kbd>Ctrl-D</kbd> to tell the program that it
 has reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
 the process to terminate immediately.
 
-## 4. Press <kbd>q</kbd> to quit?
+## 5. Press <kbd>q</kbd> to quit?
 
 To demonstrate how canonical mode works, we'll have the program exit when it
 reads a <kbd>q</kbd> keypress from the user. 
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 4. Press q to quit| main.go|
+| Press q to quit | main.go|
 
 ```go
 
+	for {
+
+		//######## Lines to Add/Change ##########
+		b, err := r.ReadByte()
+		//#######################################
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Printf("Error reading from Stdin: %s\n", err)
 			os.Exit(1)
 		}
 
-		//######## Lines to Add ##########
-
-		if b == 'q'{
+		//######## Lines to Add/Change ##########
+		if b == 'q' {
 			break
 		}
-
-
-		//################################
+		//#######################################
 	}
 }
 ```

@@ -127,7 +127,7 @@ will stop and the program will exit. Any characters after the `q` will be left
 unread on the input queue, and you may see that input being fed into your shell
 after your program exits.
 
-## 5. Turn off echoing
+## 6. Turn off echoing
 
 In Go, interactions with operating systerm primitives are handled by 
 operating system specific packages under the [`golang.org/x/sys`](https://godoc.org/golang.org/x/sys) 
@@ -149,13 +149,11 @@ of go called build tags. In code below, take a look at the very first line
 building for Linux targets. This way, we can later port GoKilo to Windows
 by creating a platform appropriate implementation with `// +build windows` tag 
 
-**Note**: you may use `darwin` or `freebsd` etc. instead of `linux` if you're
-following the tutorial on those systems. I haven't tested it personally,
-but it should work.
+**Note**: We will be making changes in two files below in the same commit
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 5. Turn off echoing | rawmode_unix.go|
+| Turn off echoing | rawmode_unix.go|
 
 ```go
 
@@ -190,7 +188,7 @@ func rawMode() error {
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 5. Turn off echoing | main.go|
+| Turn off echoing | main.go|
 
 ```go
 
@@ -214,7 +212,8 @@ gets in the way when we are trying to carefully render a user interface in raw
 mode. So we turn it off. This program does the same thing as the one in the
 previous step, it just doesn't print what you are typing. You may be familiar
 with this mode if you've ever had to type a password at the terminal, when
-using `sudo` for example.
+using `sudo` for example. You will still need to press `enter` after `q` to
+quit.
 
 Terminal attributes can be read into a `Termios` struct by `IoctlGetTermios()`.
 After modifying them, you can then apply them to the terminal using 

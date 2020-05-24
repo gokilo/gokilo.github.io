@@ -12,35 +12,29 @@ you're using, and you have to figure out how to compile and run your
 program in that environment.
 
 Fortunately, the program we are building doesn't depend on any external
-libraries, so you don't need anything beyond the Go compiler and the standard
-library and some tooling.
+libraries, so you don't need anything beyond the Go compiler, the Go
+standard library and a text editor.
 
 # Pre-Requisites
 
 ## Some flavor of Unix or Windows Sub-system for Linux
 This tutorial interacts a lot with the terminal and assumes you will be
-working in a Unixy environment. If you are on a Windows 10 machine, it is
-recommended you install [Windows Sub-system for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) which gives you a Linux environment without the
-overhead of virtual machines.
+working in a Unixy environment. If you are on a Windows 10 machine, I recommend
+you install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/) 
+which gives you a well supported Linux terminal environment.
 
-GoKilo does compile and work perfectly in a native windows console like `cmd`
-or `powershell` but the required code modifications will be covered in a 
-separate appendix in the interest of pedagogical simplicity.
+GoKilo does compile and work in a native windows console like `cmd`
+or `powershell` but the required code modifications to use windows system
+calls will be covered in the appendix to keep the tutorial simple.
 
 A few tips if you use Windows Subsystem for Linux
-- WSL seems to open in the `system32` directory by default. To open
-  in the home directory
-  Simply create a shortcut that has the command line something like 
-  `C:\Windows\System32\wsl.exe ~` to open in the home directory.
-- Typing `explorer .` on the WSL command line opens an explorer window
-  that mounts the WSL home directory.
-- Typing `code .` opens Visual Studio Code and loads the WSL current
-  directory in the workspace if you have it installed
+- Typing `explorer.exe .` inside your Linux $HOME directory opens it in an explorer
+- Typing `code .` opens Visual Studio Code in remote editing mode if you have it installed
 
 ## Setup the Go programming language distribution
 [Install the Go language distribution](https://golang.org/doc/install) 
 on your development machine. Go 1.13 or higher is preferred. In many
-Linux distributions, the default Go version may be dated and so it 
+Linux distributions, the default Go version may be out-dated and so it 
 is recommended to install from the official website.
 
 ## Setup your development environmnet for Go
@@ -64,7 +58,7 @@ learning resources.
 
 # Getting ready for Development
 
-## 0. Setup your development directory
+## 1. Setup your development directory
 It is recommended that you create a remote git repository
 (eg. [GitHub](https://github.com/), [GitLab](https://about.gitlab.com/),
 [BitBucket](https://bitbucket.org/) etc. all have free tiers) to
@@ -79,20 +73,23 @@ Alternatively, create a directory for your project.
 $ mkdir gokilo
 ```
 
-## 1. Initializing a go module for development
+## 2. Initializing a go module for development
 Go versions from v1.11 onwards have support for modules to manage
 dependencies. For your project choose a module path of your own 
 (looking like `github.com/gokilo/gokilo` below) and initialize
 a Go module. If you are using version control, just use the part
 of your repository URL that looks like above.
 
+You need to run the command below on your terminal from inside
+the project directory
+
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 1. Initiate a go module | |
+| Initiate a go module | n/a |
 
 ```
-$ go mod init github.com/gokilo/gokilo #replace repo path with your own
+go mod init github.com/gokilo/gokilo #replace repo path with your own
 ```
 
 **Note**: From this step onwards, you can follow the code in the
@@ -100,7 +97,7 @@ $ go mod init github.com/gokilo/gokilo #replace repo path with your own
 repo. The commit titles in that repo will correspond to the ones shown
 in the table above each step.
 
-## 2. (Optional) Add a `.gitignore` file to your project
+## 3. (Optional) Add a `.gitignore` file to your project
 If you're version controlling using Git, now is  good time to
 addd a `.gitignore` file to ensure that generated binaries don't
 get checked in by mistake. Even if you're not using version
@@ -109,7 +106,7 @@ in case you do so at a later date.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 2. add a .gitignore file | .gitignore |
+| add a .gitignore file | .gitignore |
 
 ```
 # Binaries for programs and plugins
@@ -132,4 +129,4 @@ gokilo
 ```
 
 
-We're ready to begin! Head on to [Entering Raw Mode](/entering-raw-mode.html)
+We're ready to begin! Head on to [Entering Raw Mode](/02_entering-raw-mode.html)

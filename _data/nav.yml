@@ -2,13 +2,13 @@
   link: /
 
 - name: Setup
-  link: /setup.html 
+  link: /01_setup.html 
 
 - name: Entering raw mode
-  link: /entering-raw-mode.html
+  link: /02_entering-raw-mode.html
 
 - name: Raw input and output
-  link: /raw-input-and-output.html
+  link: /03_raw-input-and-output.html
 
 #- name: A text viewer
 #  link: /a-text-viewer.html

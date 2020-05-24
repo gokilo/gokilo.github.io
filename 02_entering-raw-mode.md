@@ -5,13 +5,13 @@ title: Entering Raw Mode
 
 # Entering Raw Mode
 
-## 3. Get keypresses from user
+## 4. Get keypresses from user
 
 Let's try and read keypresses from the user. 
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 3. Get keypresses from user| main.go|
+| Get keypresses from user| main.go|
 
 ```go
 

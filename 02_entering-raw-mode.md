@@ -345,7 +345,8 @@ call in `main()` still uses the old function signature.
 
 Having written the `rawMode()` function, `restore()` is fairly simple.
 It uses a `gob.Decoder` to decode the previously serialized `Termios`
-and use the `IoctlSetTermios()` system call to restore it.
+and use the `IoctlSetTermios()` system call to restore it. Add the function
+to the end of the file.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
@@ -402,6 +403,9 @@ func main() {
 
 	r := bufio.NewReader(os.Stdin)
 
+	// ---
+}
+
 ```
 
 ## 8. Turn off canonical mode
@@ -415,9 +419,16 @@ we will finally be reading input byte-by-byte, instead of line-by-line. Now the 
 
 ```go
 
+func rawMode() ([]byte, error) {
+
+	// ---
+
     //######## Lines to Add/Change ##########
 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON)
-    //#######################################
+	//#######################################
+	
+	// ---
+}
 
 ```
 
@@ -557,11 +568,17 @@ both of these signals.
 
 ```go
 
-    //######## Lines to Add/Change ##########
+func rawMode() ([]byte, error) {
 
+	// ---
+
+	//######## Lines to Add/Change ##########
 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
+	//################################
 
-    //################################
+	// ---
+}
+
 ```
 
 `ISIG` comes from `<termios.h>`. Like `ICANON`, it starts with `I` but isn't an
@@ -574,7 +591,7 @@ This also disables <kbd>Ctrl-Y</kbd> on macOS, which is like <kbd>Ctrl-Z</kbd>
 except it waits for the program to read input before suspending it.
 
 
-## 10. Disable <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd>
+## 11. Disable <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd>
 
 By default, <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd> are used for
 [software flow control](https://en.wikipedia.org/wiki/Software_flow_control).
@@ -585,16 +602,21 @@ just turn off that feature.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 10. Disable Ctrl-S and Ctrl-Q | rawmode_unix.go|
+| Disable Ctrl-S and Ctrl-Q | rawmode_unix.go|
 
 ```go
 
+func rawMode() ([]byte, error) {
+
+	// ---
 
     termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
-
     //######## Lines to Add/Change ##########
 	termios.Iflag = termios.Iflag &^ (unix.IXON)
-    //################################
+	//################################
+	
+	// ---
+}
 
 ```
 
@@ -607,7 +629,7 @@ Now <kbd>Ctrl-S</kbd> can be read as a `19` byte and <kbd>Ctrl-Q</kbd> can be
 read as a `17` byte.
 
 
-## 11. Disable <kbd>Ctrl-V</kbd>
+## 12. Disable <kbd>Ctrl-V</kbd>
 
 On some systems, when you type <kbd>Ctrl-V</kbd>, the terminal waits for you to
 type another character and then sends that character literally. For example,
@@ -621,14 +643,21 @@ flag that starts with `I` but actually belongs in the `Lflag` field.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 11. Disable Ctrl-V | rawmode_unix.go|
+| Disable Ctrl-V | rawmode_unix.go|
 
 ```go
 
+func rawMode() ([]byte, error) {
+
+	// ---
+
     //######## Lines to Add/Change ##########
 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
-    //################################
-    termios.Iflag = termios.Iflag &^ (unix.IXON)
+	//################################
+	termios.Iflag = termios.Iflag &^ (unix.IXON)
+	
+	// ---
+}
 
 ```
 
@@ -636,7 +665,7 @@ flag that starts with `I` but actually belongs in the `Lflag` field.
 `15` byte.
 
 
-## 12. Fix <kbd>Ctrl-M</kbd>
+## 13. Fix <kbd>Ctrl-M</kbd>
 
 If you run the program now and go through the whole alphabet while holding down
 <kbd>Ctrl</kbd>, you should see that we have every letter except <kbd>M</kbd>.
@@ -651,14 +680,22 @@ off this feature.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 12. Fix Ctrl-M | rawmode_unix.go|
+| Fix Ctrl-M | rawmode_unix.go|
 
 ```go
+
+func rawMode() ([]byte, error) {
+
+	// ---
+
 
 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
     //######## Lines to Add/Change ##########
 	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
-    //################################
+	//################################
+	
+	// ---
+}
 
 ```
 

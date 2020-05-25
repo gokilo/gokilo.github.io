@@ -404,33 +404,32 @@ func main() {
 
 ```
 
-## 7. Turn off canonical mode
+## 8. Turn off canonical mode
 
 There is an `ICANON` flag that allows us to turn off canonical mode. This means
 we will finally be reading input byte-by-byte, instead of line-by-line. Now the program will quit as soon as you press <kbd>q</kbd>. 
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 7. Turn off canonical mode| rawmode_unix.go|
+| Turn off canonical mode| rawmode_unix.go|
 
 ```go
-		return nil, fmt.Errorf("could not serialize console settings: %w", err)
-	}
 
     //######## Lines to Add/Change ##########
 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON)
-    //################################
+    //#######################################
 
-	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
 ```
 
 
-## 8. Display keypresses
+## 9. Display keypresses
 
 To get a better idea of how input in raw mode works, let's print out each byte
 that we read. We'll print each character's numeric ASCII value, as well as
 the character it represents if it is a printable character.
 
+
+### 9a. Detect Control Characters
 
 Let's first create a small function `isCntrl()` to tests whether a character
 is a control character. Control characters are nonprintable characters
@@ -441,11 +440,13 @@ codes 32&ndash;126 are all printable. (Check out the
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 8. Display Keypresses| main.go|
+| Detect control characters | main.go|
 
 ```go
+package main
 
-	"os"
+import (
+	// ---
 )
 
 //######## Lines to Add/Change ##########
@@ -460,9 +461,12 @@ func isCntrl(b byte) bool {
 //################################
 
 func main() {
+	// ---
+}
 
 ```
 
+## 9b. Display Keypresses
 
 `fmt.Printf()` can print multiple representations of a byte. `%d` tells it to
 format the byte as a decimal number (its ASCII code), and `%c` tells it to
@@ -470,25 +474,38 @@ write out the byte directly, as a character.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 8. Display Keypresses| main.go|
+| Display Keypresses| main.go|
 
 ```go
 
+func main() {
+
+	// ---
+
+	for {
+
+		b, err := r.ReadByte()
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
 			fmt.Printf("Error reading from Stdin: %s\n", err)
 			os.Exit(1)
 		}
 
         //######## Lines to Add/Change ##########
-
 		if isCntrl(b) {
 			fmt.Printf("%d\n", b)
 		} else {
 			fmt.Printf("%d (%c)\n", b, b)
-        }
-
+		}
         //################################
 
 		if b == 'q' {
+			break
+		}
+	}
+}
 
 ```
 
@@ -527,7 +544,7 @@ will be suspended to the background. Run the `fg` command to bring it back to
 the foreground but it may no longer be in raw mode. It may also quit immediately
 after you do that, as a result of the underlying File reader returning error.
 
-## 9. Turn off <kbd>Ctrl-C</kbd> and <kbd>Ctrl-Z</kbd> signals
+## 10. Turn off <kbd>Ctrl-C</kbd> and <kbd>Ctrl-Z</kbd> signals
 
 By default, <kbd>Ctrl-C</kbd> sends a `SIGINT` signal to the current process
 which causes it to terminate, and <kbd>Ctrl-Z</kbd> sends a `SIGTSTP` signal to
@@ -536,7 +553,7 @@ both of these signals.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 9. Turn off Ctrl-C and Ctrl-Z signals| rawmode_unix.go|
+| Turn off Ctrl-C and Ctrl-Z signals| rawmode_unix.go|
 
 ```go
 

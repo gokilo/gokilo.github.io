@@ -144,12 +144,20 @@ We can set a terminal's attributes by
 Let's try turning off the `ECHO` feature this way. We will create the 
 function to carry out this operation in a new file in the same `main`
 package called `rawmode_unix.go` to take advantage of a powerful feature
-of go called build tags. In code below, take a look at the very first line
-`// +build linux` which tells the Go compiler to only use this file when
-building for Linux targets. This way, we can later port GoKilo to Windows
-by creating a platform appropriate implementation with `// +build windows` tag 
+of go called [build constraints](https://golang.org/pkg/go/build/#hdr-Build_Constraints). 
 
-**Note**: We will be making changes in two files below in the same commit
+In code below, take a look at the very first line in the source code listing below which looks like this.
+```go
+// +build linux
+```
+This tells the Go compiler to use this file only for building Linux
+targets. This way, we keep can make the Linux specific system calls
+in functions in this file. Later when porting over GoKilo to
+Windows, we can implement the same functions with Windows system
+calls in a similar file guarded with `// +build windows` constraint. 
+
+**Note**: In the listings below, we will be making changes in two
+files in the same commit!
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
@@ -206,8 +214,8 @@ func main() {
 	r := bufio.NewReader(os.Stdin)
 ```
 
-The `unix.ECHO` feature causes each key you type to be printed to the terminal, so
-you can see what you're typing. This is useful in canonical mode, but really
+The `unix.ECHO` feature causes each key you type to be printed to the terminal, 
+so you can see what you're typing. This is useful in canonical mode, but really
 gets in the way when we are trying to carefully render a user interface in raw
 mode. So we turn it off. This program does the same thing as the one in the
 previous step, it just doesn't print what you are typing. You may be familiar
@@ -243,62 +251,109 @@ terminal back to normal in most cases. Failing that, you can always restart
 your terminal emulator. We'll fix this whole problem in the next step.
 
 
-## 6. Disable raw mode at exit
+## 7. Disable raw mode at exit
 
 Let's be nice to the user and restore their terminal's original attributes when
 our program exits. We'll save a copy of the `Termios` struct in its original
 state, and use `unix.IoctlSetTermios()` to apply it to the terminal when 
 the program exits with a new function called `restore()`.
 
-Keeping platform portability in mind, `Termios` is not really defined
-on the Windows platform, so rather than have the `rawMode()` function
-return it directly, we will serialize it using Go's native `encoding/gob`
-package into a byte slice that can be saved by he caller and passed back
-to be decoded and restored. Since Go supports multiple return values
-from functions, we can return both the byte slice and any error encountered.
+We will make the changes to support this functionality in three steps
+- Make `rawMode()` return the current terminal settings
+- Create a `restore()` function to restore settings
+- Adjust `main()` to enable/disable raw mode 
 
+
+### 7a. Make `rawMode()` return the current terminal settings 
+
+To make `rawMode()` return the current `Termios` settings
+we will take advantage of Go's multpile return value feature to return
+both `Termios` and the error value we are currently returning.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 6. Disable raw mode at exit| rawmode_unix.go|
+| Make rawMode return current terminal settings| rawmode_unix.go|
+
 
 ```go
 
+// +build linux
+
+package main
+
 import (
-    //######## Lines to Add/Change ##########
-    "bytes"
-    "encoding/gob"
-    //################################
+	//######## Lines to Add/Change ##########
+	"bytes"
+	"encoding/gob"
+	//#######################################
+	"fmt"
 
-    "fmt"
-
-    "golang.org/x/sys/unix"
+	"golang.org/x/sys/unix"
 )
 
 //######## Lines to Add/Change ##########
-
 func rawMode() ([]byte, error) {
+//#######################################
 
 	termios, err := unix.IoctlGetTermios(unix.Stdin, unix.TCGETS)
 	if err != nil {
+		//######## Lines to Add/Change ##########
 		return nil, fmt.Errorf("could not fetch console settings: %s", err)
+		//#######################################
 	}
 
+	//######## Lines to Add/Change ##########
 	buf := bytes.Buffer{}
 	if err := gob.NewEncoder(&buf).Encode(termios); err != nil {
-		return nil, fmt.Errorf("could not serialize console settings: %w", err)
+		return nil, fmt.Errorf("could not serialize settings: %w", err)
 	}
+	//#######################################
 
 	termios.Lflag = termios.Lflag &^ unix.ECHO
 
 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+		//######## Lines to Add/Change ##########
 		return nil, fmt.Errorf("could not set console settings: %s", err)
+		//#######################################
 	}
 
+	//######## Lines to Add/Change ##########
 	return buf.Bytes(), nil
+	//#######################################
 }
 
-// Restore restoes the console to a previous row setting
+
+```
+
+Since `Termios` is a Linux specific struct and is not defined
+in Windows, we can make the function signature of `rawMode()` more 
+platform independent by serializing the struct into more a generic 
+type like byte slice. That way, when we port GoKilo to Windows, we
+don't need ot make any changes in `main()` and merely implement a
+Windows version of this function. In any case in our main program
+we will not access this information beyond storing it and passing to
+the platform specific `restore()` - so it can be a black box container.
+
+To serialize, we will use Go's native `encoding/gob` package which 
+serializes both the `Termios` data & information about the data
+structure into a byte slice
+
+**NOTE:**: At this stage, your code won't compile since our function
+call in `main()` still uses the old function signature.
+
+### 7b. Create a `restore()` function to restore settings
+
+Having written the `rawMode()` function, `restore()` is fairly simple.
+It uses a `gob.Decoder` to decode the previously serialized `Termios`
+and use the `IoctlSetTermios()` system call to restore it.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| Create a restore function | rawmode_unix.go|
+
+```go
+
+//######## Lines to Add/Change ##########
 func restore(original []byte) error {
 
 	var termios unix.Termios
@@ -312,48 +367,42 @@ func restore(original []byte) error {
 	}
 	return nil
 }
-
-//################################
-
+//#######################################
 ```
 
-In the `main()` function, we store the serialized version of the 
-original `Termios` settings in byte slice called `origTermios`.
-We can now `defer` a call to `restore()` passing `origTermios`
-that will cause `restore()` to be called automatically when the
-program exits, whether it exits by returning from `main()`, or
-by calling the `exit()` function. 
+### 7c. Adjust `main()` to enable/disable raw mode
 
-Also instead of calling `restore()` directly in defer, let us wrap it
-in a [function clousure](https://tour.golang.org/moretypes/25) to
-let us handle any errors that may happen during the call. Using defer 
-and function clousures lets us avoid global variables.
+In the `main()` function, we can now call the revised `rawMode()`
+function and store the serialized original `Termios` settings in
+a variable called `origTermios`. 
+
+When the program exits, we can call `restore()` passing this 
+variable to restore terminal settings. We do this by using the
+`defer` keyword which registers this function to be called when
+exiting the `main()` function.
+
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 6. Disable raw mode at exit| main.go|
+| Adjust main to enable or disable raw mode| main.go|
 
 ```go
+
 func main() {
 
     //######## Lines to Add/Change ##########
-
 	origTermios, err := rawMode()
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
 	}
 
-	defer func() {
-		if err := restore(origTermios); err != nil {
-			fmt.Printf("Error: %s\n", err)
-		}
-    }()
-
+	defer restore(origTermios)
     //################################
 
-```
+	r := bufio.NewReader(os.Stdin)
 
+```
 
 ## 7. Turn off canonical mode
 

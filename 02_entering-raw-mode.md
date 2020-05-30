@@ -354,6 +354,8 @@ to the end of the file.
 
 ```go
 
+// ---
+
 //######## Lines to Add/Change ##########
 func restore(original []byte) error {
 
@@ -429,6 +431,8 @@ func rawMode() ([]byte, error) {
 	
 	// ---
 }
+
+// ---
 
 ```
 
@@ -579,6 +583,8 @@ func rawMode() ([]byte, error) {
 	// ---
 }
 
+// ---
+
 ```
 
 `ISIG` comes from `<termios.h>`. Like `ICANON`, it starts with `I` but isn't an
@@ -617,6 +623,8 @@ func rawMode() ([]byte, error) {
 	
 	// ---
 }
+
+// ---
 
 ```
 
@@ -659,6 +667,8 @@ func rawMode() ([]byte, error) {
 	// ---
 }
 
+// ---
+
 ```
 
 <kbd>Ctrl-V</kbd> can now be read as a `22` byte, and <kbd>Ctrl-O</kbd> as a
@@ -697,6 +707,8 @@ func rawMode() ([]byte, error) {
 	// ---
 }
 
+// ---
+
 ```
 
 The `I` in `ICRNL` stands for "input flag", `CR` stands
@@ -705,7 +717,7 @@ for "carriage return", and `NL` stands for "new line".
 Now <kbd>Ctrl-M</kbd> is read as a `13` (carriage return), and the
 <kbd>Enter</kbd> key is also read as a `13`.
 
-## 13. Turn off all output processing
+## 14. Turn off all output processing
 
 It turns out that the terminal does a similar translation on the output side.
 It translates each newline (`"\n"`) we print into a carriage return followed by
@@ -723,15 +735,25 @@ and I assume `POST` stands for "post-processing of output".
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 13. Turn off all output processing | rawmode_unix.go|
+| Turn off all output processing | rawmode_unix.go|
 
 ```go
 
-    termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
-    termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
+func rawMode() ([]byte, error) {
+
+	// ---
+
+
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
     //######## Lines to Add/Change ##########
     termios.Oflag = termios.Oflag &^ (unix.OPOST)
-    //################################
+	//################################
+	
+	// ---
+}
+
+// ---
 
 ```
 

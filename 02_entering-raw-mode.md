@@ -739,6 +739,8 @@ and I assume `POST` stands for "post-processing of output".
 
 ```go
 
+// ---
+
 func rawMode() ([]byte, error) {
 
 	// ---
@@ -757,7 +759,7 @@ func rawMode() ([]byte, error) {
 
 ```
 
-## 14. Fix carriage returns
+## 15. Fix carriage returns
 
 If you ran the program after turning off `OPOST`, you'll see that the newline
 characters we're printing are only moving the cursor down, and not to the left
@@ -766,41 +768,47 @@ side of the screen. To fix that, let's add carriage returns to our
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 14. Fix carriage returns | main.go|
+| Fix carriage returns | main.go|
 
 ```go 
 
-//######## Lines to Add/Change ##########
-func main() {
+// ---
+
+ func main() {
 
 	origTermios, err := rawMode()
 	if err != nil {
+		//######## Lines to Add/Change ##########
 		fmt.Printf("Error: %s\r\n", err)
+		//################################
 		os.Exit(1)
 	}
 
-	defer func() {
-		if err := restore(origTermios); err != nil {
-			fmt.Printf("Error: %s\r\n", err)
-		}
-	}()
+	defer restore(origTermios)
 
 	r := bufio.NewReader(os.Stdin)
 
 	for {
+
 		b, err := r.ReadByte()
 
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			//######## Lines to Add/Change ##########
 			fmt.Printf("Error reading from Stdin: %s\r\n", err)
+			//################################
 			os.Exit(1)
 		}
 
 		if isCntrl(b) {
+			//######## Lines to Add/Change ##########
 			fmt.Printf("%d\r\n", b)
+			//################################
 		} else {
+			//######## Lines to Add/Change ##########
 			fmt.Printf("%d (%c)\r\n", b, b)
+			//################################
 		}
 
 		if b == 'q' {
@@ -808,7 +816,6 @@ func main() {
 		}
 	}
 }
-//################################
 
 ```
 
@@ -816,27 +823,36 @@ From now on, we'll have to write out the full `"\r\n"` whenever we want
 to start a new line.
 
 
-## 15. Miscellaneous flags
+## 16. Miscellaneous flags
 
 Let's turn off a few more flags. `BRKINT`, `INPCK`, `ISTRIP`, and `CS8`.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 15. Miscellaneous flags | main.go|
+| Miscellaneous flags | main.go|
 
-```go 
+```go
 
-    termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+// ---
 
+func rawMode() ([]byte, error) {
+
+	// ---
+
+
+	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
     //######## Lines to Add/Change ##########
     termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL | unix.BRKINT | unix.INPCK | unix.ISTRIP)
     //################################
-
     termios.Oflag = termios.Oflag &^ (unix.OPOST)
-
     //######## Lines to Add/Change ##########
     termios.Cflag = termios.Cflag | unix.CS8
     //################################
+	
+	// ---
+}
+
+// ---
 
 ```
 
@@ -846,7 +862,7 @@ terminal emulators. But at one time or another, switching them off was
 considered (by someone) to be part of enabling "raw mode", so we carry on the
 tradition (of whoever that someone was) in our program.
 
-As far as I can tell:
+As far as we can tell:
 
 * When `BRKINT` is turned on, a
   [break condition](https://www.cmrr.umn.edu/~strupp/serial.html#2_3_3) will

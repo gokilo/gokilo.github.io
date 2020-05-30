@@ -881,48 +881,75 @@ As far as we can tell:
 Now that we are able to get into raw mode and also restore safely, 
 let's create a helper function that we can call anywhere from our program
 to exit raw mode safely, show error messages if any and indicate to the
-OS whether we exited cleanly or with errors. 
+OS whether we exited cleanly or with errors. We will do this in two steps:
 
-To do this, we are going to take advantage of a feature of Go called
-[First Class Functions](https://golang.org/doc/codewalk/functions/) in which
-we can treat functions as we would treat any other variables and structs.
+- Create `safeExit()`
+- Call `safeExit()` at all exit points
 
-Let us first create a globally accessible variable `safeExit` which takes
-the type `func(error)`. In other words, we can assign to this variable any
-function that takes an `error` as a parameter and returns nothing.
+
+### 16a. Create `safeExit()`
+
+We are first going to make `origTermios` a package level global variable
+by declaring it outside of the `main()` function so that our `safeExit()`
+funtion can access it. We will then define a `safeExit(err error)` 
+function that calls `restore()`. We wil let a parameter of the type
+`error` be passed to it so that if we're exiting due to an error in the
+program, `safeExit()` can also print the error message.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 16. Safe Exit | main.go|
+| Create safeExit() | main.go|
 
 ```go
 
+package main
+
 import (
-	"bufio"
-	"fmt"
-	"io"
-	"os"
+	// ---
 )
 
 //######## Lines to Add/Change ##########
-var safeExit func(error)
+var origTermios []byte
+
+func safeExit(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+	}
+
+	err1 := restore(origTermios)
+	if err1 != nil {
+		fmt.Fprintf(os.Stderr, "Error: restoring raw mode - %s", err1)
+	}
+
+	if err != nil || err1 != nil {
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
 //################################
 
 func isCntrl(b byte) bool {
+	// ---
+}
+
+// ---
 
 ```
 
-Then after we get `origTermios` by calling `rawMode()`, we can set
-`safeExit` to such an anonymous function that restores `origTermios` 
-and also prints an error message if `safeExit` was called with a 
-non-`nil` error value similar to what we were doing previously in
-the `defer` statement. One tweak here is we explictly now log error
-messages to `os.Stderr` which is where by convention operating systems
-expect error messages to show up. To do this, we can use `fmt.Fprintf`
-funciton which allows us to send output to anything that implements
-the standard `io.Writer` interface which `os.Stderr` does. We take this
-opportunity to also make the same change in the code that handles
-failure to enter raw mode.
+Ther are a couple of points to note here. Firstly, instead of using `fmt.Printf()`,
+we are using `fmt.Fprintf()` which lets us choose which `io.Writer` we are printing
+to. In this case, we are printing to `os.Stderr` which is connected by default to the
+Standard Error device on the computer. This is normally the screen, but need not be so.
+
+Secondly, if we are exiting with an error - either outside the function or error 
+occuring during `restore()`, we exit with a non-zero error message as required by the
+standard OS convention.
+
+### 16b. Call `safeExit()` at all exit points
+
+We can then go ahead and  call `safeExit()` wherever we want to exit the program. 
+Instead of relying on a catch-all `defer` statement, we can explicitly exit with 
+`safeExit()` when we encounter an error or when exiting normally.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
@@ -930,32 +957,71 @@ failure to enter raw mode.
 
 ```go
 
-	origTermios, err := rawMode()
-	if err != nil {
-        
-        //######## Lines to Add/Change ##########
-		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
-        //################################
+// ---
 
+func main() {
+
+	//######## Lines to Add/Change ##########
+	var err error
+	origTermios, err = rawMode()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: setting raw mode - %s\r\n", err)
 		os.Exit(1)
 	}
+	//################################
 
-    //######## Lines to Add/Change ##########
-	safeExit = func(err error) {
-		if errRestore := restore(origTermios); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: disabling raw mode: %s\r\n", errRestore)
+	r := bufio.NewReader(os.Stdin)
+
+	for {
+
+		b, err := r.ReadByte()
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			//######## Lines to Add/Change ##########
+			safeExit(err)
+			//################################
 		}
 
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
-			os.Exit(1)
+		if isCntrl(b) {
+			fmt.Printf("%d\r\n", b)
+		} else {
+			fmt.Printf("%d (%c)\r\n", b, b)
 		}
-		os.Exit(0)
+
+		if b == 'q' {
+			//######## Lines to Add/Change ##########
+			safeExit(nil)
+			//################################
+		}
+
 	}
-    //################################
+}
 
 ```
 
+At the beginning of `main()` function, we're still exiting with a regular error
+handling instead of calling `restore`. That is because we'll get an error at this
+stage only if `rawMode` failed and therefore we do not have a valid `origTermios`
+to `restore` that `safeExit()` requires. We're also changing the error message
+printing to use `fmt.Fprintf()` pointing to `os.Stderr`.
+
+One interesting change to note is how we're declaring `err` variable and changing
+the call to `rawMode()` to use the `=` simple assignment operator instead of `:=` declare
+and assign operator. This is done to avoid bugs due to a feature common in programming
+languages called **varible shadowing**. 
+
+Variable shadowing allows us to re-declare variable names used in *outer scopes* 
+(in this case the `package` scope where `origTermios` is declared) within 
+*inner scopes* (in this case `main()` function). While this feature is generally
+useful, in this case if we used the `:=` operator, we'd be declaring a brand 
+new `origTermios` in `main()` instead of setting the global variable that we want.
+To avoid this, we first declare `var` and then used the simple assignment operator.
+
+Most mature languages have for `safeExit()`. Most
+languages have some way  
+Finalyk
 Finally, we can simply change the `defer` statement to call 
 `safeExit(nil)` to call it with no error and similarly change
 the places we need to exit with error to `safeExit(err)`

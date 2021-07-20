@@ -1,19 +1,24 @@
 ---
 layout: default
-title: Build your own text editor in Go
+title: Build a text editor in Go
+nav_order: 1
 ---
-# Build your own text editor in Go
-Welcome! This is an tutorial that shows you how to build a text
+# Build a text editor in Go
+
+<span class="label label-red">This tutorial is still under development</span>
+
+This is an tutorial that shows you how to build a text
 editor in [Go Programming Language](https://www.golang.org).
 
 The text editor is a port of [antirez's kilo](http://antirez.com/news/108)
 in Go. Like the C original it's about 1000 lines of Go with no dependencies,
 and it implements all the basic features you expect in a minimal editor
-including a search feature. This tutorial is adapted from the original
+including search. This tutorial is an adaption of the original
 [Snaptoken Tutorial](https://viewsourcecode.org/snaptoken/kilo/) for
-the C language version of kilo.
+Kilo test editor the C language version. 
 
-This tutorial walks you through building the editor in **184 steps**. Each step,
+
+This tutorial walks you through building the editor step by step. In each step,
 you'll add, change, or remove a few lines of code. Most steps, you'll be able
 to **observe the changes** you made by compiling and running the program
 immediately afterwards. I explain each step along the way, sometimes in 

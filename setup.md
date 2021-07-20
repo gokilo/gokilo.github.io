@@ -1,9 +1,8 @@
 ---
 layout: default
 title: Setup
+nav_order: 2
 ---
-
-Ahh...  Don't you love a fresh start on a blank slate?
 
 Unfortunately, when you're building a *computer program*, progressing
 from the blank slate can get... complicated. And frustrating. You have
@@ -19,9 +18,12 @@ library and some tooling.
 
 ## Some flavor of Unix or Windows Sub-system for Linux
 This tutorial interacts a lot with the terminal and assumes you will be
-working in a Unixy environment. If you are on a Windows 10 machine, it is
-recommended you install [Windows Sub-system for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) which gives you a Linux environment without the
-overhead of virtual machines.
+working in a Unixy environment. If you are on a Windows 10 machine, I 
+recommended that you either install a Linux virtual machine or 
+install [Windows Sub-system for Linux](https://docs.microsoft.com/en-us/windows/wsl/about)
+which gives you a Linux environment nicely integrated within Windows.
+A major benefit of WSL is that IDEs like Visual Studio Code or Intellij
+Idea/GoLand support remote development in WSL out of the box.
 
 GoKilo does compile and work perfectly in a native windows console like `cmd`
 or `powershell` but the required code modifications will be covered in a 
@@ -83,33 +85,45 @@ $ mkdir gokilo
 Go versions from v1.11 onwards have support for modules to manage
 dependencies. For your project choose a module path of your own 
 (looking like `github.com/gokilo/gokilo` below) and initialize
-a Go module. If you are using version control, just use the part
-of your repository URL that looks like above.
+a Go module. If you are using version control, just substitute
+the initial part `github.com/gokilo` above with your own 
+repository's URL.
 
-
-| **Commit Title** | **File** |
+| **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 1. Initiate a go module | |
+| Initiate a go module | Terminal |
 
 ```
 $ go mod init github.com/gokilo/gokilo #replace repo path with your own
 ```
+
+This will create a `go.mod` file which is used for dependency management
+by Go. The file should look something like this.
+
+| **Commit Title** | **Location** |
+|:-----------------|---------:|
+| Initiate a go module | go.mod |
+
+```
+module "github.com/gokilo/gokilo"
+```
+
 
 **Note**: From this step onwards, you can follow the code in the
 [`https://github.com/gokilo/gokilo`](https://github.com/gokilo/gokilo)
 repo. The commit titles in that repo will correspond to the ones shown
 in the table above each step.
 
-## 2. (Optional) Add a `.gitignore` file to your project
+## 2. Add a `.gitignore` file to your project
 If you're version controlling using Git, now is  good time to
 addd a `.gitignore` file to ensure that generated binaries don't
 get checked in by mistake. Even if you're not using version
 control just now, you might as well create the `.gitignore` file
 in case you do so at a later date.
 
-| **Commit Title** | **File** |
+| **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 2. add a .gitignore file | .gitignore |
+| add a .gitignore file | .gitignore |
 
 ```
 # Binaries for programs and plugins
@@ -118,17 +132,20 @@ in case you do so at a later date.
 *.dll
 *.so
 *.dylib
+gokilo
 
 # Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool
+# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Vendored dependencies
+# Dependency directories (remove the comment below to include it)
 # vendor/
 
-gokilo
+# Optional: Intellij Idea project config
+gokilo.iml
+.idea
 ```
 
 

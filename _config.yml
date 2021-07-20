@@ -1,1 +1,13 @@
-theme: jekyll-theme-cayman
+#theme: jekyll-theme-cayman
+remote_theme: pmarsceill/just-the-docs
+markdown: GFM
+
+title: GoKilo
+description: A tutorial for writing a text editor in Go
+#baseurl: "/just-the-docs" # the subpath of your site, e.g. /blog
+url: "https://srinathh.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+
+search_enabled: true
+heading_anchors: true
+color_scheme: dark
+footer_content: "Copyright &copy; 2020 Hariharan Srinath. GoKilo source code is released under <a href=\"https://github.com/gokilo/gokilo/blob/main/LICENSE\">BSD 2 Clause</a> license. All other content is licensed under <a href=\"http://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a> license. This work is based on <a href=\"https://github.com/snaptoken/kilo-tutorial\">Build Your Own Text Editor</a> tutorial by Snaptoken licensed under <a href=\"http://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a> license"

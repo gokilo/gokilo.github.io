@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Raw Input and Output
+nav_order: 4
 ---
 
 ## 17. Press <kbd>Ctrl-Q</kbd> to quit

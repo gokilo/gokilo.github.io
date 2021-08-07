@@ -8,11 +8,12 @@ nav_order: 3
 
 ## 3. Get keypresses from user
 
-Let's try to read keypress from the user. Create a file main.go and add the following lines to read user input.
+Let's try to read keypress from the user. Create a file main.go and add the
+following lines to read user input.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| get keypress from user| main.go|
+| Get keypress from user| main.go|
 
 ```go
 package main
@@ -34,56 +35,69 @@ func main() {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			fmt.Printf("Error reading from Stdin: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\n", err)
 			os.Exit(1)
 		}
 	}
 }
-
 ```
 
-Unix-like systems expose the keyboard device to programs abstracted as a file called "Standard Input". This abstraction
-lets you easily do potentially useful things like re-directing input from a disk file instead of the keyboard to prorams
-& is often used in chaining command line tools.
+Unix-like systems expose the keyboard device to programs abstracted as a file
+called "Standard Input". This abstraction lets you easily do potentially useful
+things like re-directing input from a disk file instead of the keyboard to
+prorams & is often used in chaining command line tools.
 
-Go exposes the standard input in the `os` package as an `os.File` typed package level variable called `os.Stdin` .
-Since `os.File` implements the standard `io.Reader` interface, we could potentially directly use the `File.Read()`
-method to get keyboard input as if we were reading from a disk file. However, we will take advantage of a buffered
-reader implementation provided by the Go standard library's `bufio` that provides nice features like ability to read or
-even "peek" a byte at a time. We call the `bufio.NewReader()`
-method with our `os.Stdin` variable to get a buffered reader wrapping our keyboard input.
+Go exposes the standard input in the `os` package as an `os.File` typed package
+level variable called `os.Stdin` . Since `os.File` implements the standard
+`io.Reader` interface, we could potentially directly use the `File.Read()`
+method to get keyboard input as if we were reading from a disk file. However, we
+will take advantage of a buffered reader implementation provided by the Go
+standard library's `bufio` that provides nice features like ability to read or
+even "peek" a byte at a time. We call the `bufio.NewReader()` method with our
+`os.Stdin` variable to get a buffered reader wrapping our keyboard input.
 
-When you compile and run `./gokilo`, your terminal gets hooked up to the standard input, and so your keyboard input gets
-read in the call to `r.ReadByte()`. Since at this stage, we are not actually using the character we read, we assign it
-to an `_` which throws away the return value as Go compiler doesn't allow un-used variables.
+When you compile and run `./gokilo`, your terminal gets hooked up to the
+standard input, and so your keyboard input gets read in the call to
+`r.ReadByte()`. Since at this stage, we are not actually using the character we
+read, we assign it to an `_` which throws away the return value as Go compiler
+doesn't allow un-used variables.
 
-In Go, errors are returned as values rather than as thrown exceptions etc. So here we check for errors before continuing
-the infinite loop of reading from the keyboard. Specifically, we check if the `err` variable is set to `io.EOF` which
-marks the `end of file` marker and if so, we exit the program normally (remember Stdin is a `os.File`, you could
-theoritically pipe from some other device to it). If the error is not nil but some other value, we exit with an error
-message & code.
+In Go, errors are returned as values rather than as thrown exceptions etc. So
+here we check for errors before continuing the infinite loop of reading from the
+keyboard. Specifically, we check if the `err` variable is set to `io.EOF` which
+marks the `end of file` marker and if so, we exit the program normally (remember
+Stdin is a `os.File`, you could theoritically pipe from some other device to
+it). If the error is not nil but some other value, we exit with an error message
+& code. Note how we're using the `fmt.Fprintf()` function to write to the
+**Standard Error** device provided by OS (usually the screen).
 
-By default your terminal starts in **canonical mode**, also called **cooked mode**. In this mode, keyboard input is only
-sent to your program when the user presses <kbd>Enter</kbd>. This is useful for many programs: it lets the user type in
-a line of text, use <kbd>Backspace</kbd>
-to fix errors until they get their input exactly the way they want it, and finally press <kbd>Enter</kbd> to send it to
-the program. But it does not work well for programs with more complex user interfaces, like text editors. We want to
-process each keypress as it comes in, so we can respond to it immediately.
+By default your terminal starts in **canonical mode**, also called **cooked
+mode**. In this mode, keyboard input is only sent to your program when the user
+presses <kbd>Enter</kbd>. This is useful for many programs: it lets the user
+type in a line of text, use <kbd>Backspace</kbd> to fix errors until they get
+their input exactly the way they want it, and finally press <kbd>Enter</kbd> to
+send it to the program. But it does not work well for programs with more complex
+user interfaces, like text editors. We want to process each keypress as it comes
+in, so we can respond to it immediately.
 
-What we want is **raw mode**. Unfortunately, there is no simple switch you can flip to set the terminal to raw mode. Raw
-mode is achieved by turning off a great many flags in the terminal, which we will do gradually over the course of this
-chapter. This also works differently for Windows and Linux - so we will also discuss how Go handles conditional
-compilation out of the box allowing you to create a Windows version & a Linux version of the same function.
+What we want is **raw mode**. Unfortunately, there is no simple switch you can
+flip to set the terminal to raw mode. Raw mode is achieved by turning off a
+great many flags in the terminal, which we will do gradually over the course of
+this chapter. This also works differently for Windows and Linux - so we will
+also discuss how Go handles conditional compilation out of the box allowing you
+to create a Windows version & a Linux version of the same function.
 
-To exit the above program, press <kbd>Ctrl-D</kbd> to tell the program that it has reached the end of file. Or you can
-always press <kbd>Ctrl-C</kbd> to signal the process to terminate immediately.
+To exit the above program, press <kbd>Ctrl-D</kbd> to tell the program that it
+has reached the end of file. Or you can always press <kbd>Ctrl-C</kbd> to signal
+the process to terminate immediately.
 
 ## 4. Press <kbd>q</kbd> to quit?
 
-To demonstrate how canonical mode works, we'll have the program exit when it reads a <kbd>q</kbd> keypress from the
-user. From now on, code changes between steps will be shown below in the "diff" format where the lines marked with <kbd>
--</kbd>
-should be deleted and lines marked with <kbd>+</kbd> should be inserted.
+To demonstrate how canonical mode or "cooked mode" works, we'll have the program
+exit when it reads a <kbd>q</kbd> keypress from the user. From now on, code
+changes between steps will be shown below in the "diff" format where the lines
+marked with <kbd> -</kbd> should be deleted and lines marked with <kbd>+</kbd>
+should be inserted.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
@@ -101,7 +115,7 @@ should be deleted and lines marked with <kbd>+</kbd> should be inserted.
  		if err == io.EOF {
  			break
  		} else if err != nil {
- 			fmt.Printf("Error reading from Stdin: %s\n", err)
+ 			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\n", err)
  			os.Exit(1)
  		}
 +
@@ -110,47 +124,63 @@ should be deleted and lines marked with <kbd>+</kbd> should be inserted.
 +		}
  	}
  }
-```
+ ```
 
 To quit this program, you will have to type a line of text that includes a `q`
-in it, and then press enter. The program will quickly read the line of text one character at a time until it reads
-the `q`, at which point the `for` loop will terminate causing the program to exit. Any characters after the `q` will be
-left unread on the input queue, and you may in some terminals see that fed into your shell after your program exits.
+in it, and then press enter. The program will quickly read the line of text one
+character at a time until it reads the `q`, at which point the `for` loop will
+terminate causing the program to exit. Any characters after the `q` will be left
+unread on the input queue, and you may in some terminals see that fed into your
+shell after your program exits.
 
-This user experience of having to press <kbd>Enter</kbd> before any input gets processed is obviously not useful in 
-a text editor. In the rest of this section of the tutorial, we will use functions provided by Go to interact with
-the operating system and change terminal settings to support better user interaction.
+This user experience of having to press <kbd>Enter</kbd> before any input gets
+processed is obviously not useful in a text editor. 
 
 ## 5. Turn off echoing
 
-Go provides functions to interact at a low level interaction operating systems OS specific packages under
-the [`golang.org/x/sys`](https://godoc.org/golang.org/x/sys)
-namespace . To get and control terminal attributes in Unix, we can use the `IoctlGetTermios()` and `IoctlSetTermios()`
-functions from the `unix` package which mirror the more traditional `tcgetattr()`
-and `tcsetattr()` functions in the Unix C library.
+To enter **raw mode** we have to interact with the operating system to request
+it to turn off termial processing features like echoing keys we type to the
+screen, waiting for <kbd>Enter</kbd> befor processing whatever is typed etc. so
+that our Text Editor can control where characters appear on screen rather than
+the operating system terminal.  
 
-We can set a terminal's attributes by
+Go provides functions to interact with the operating systems through OS specific
+packages under [`golang.org/x/sys`](https://godoc.org/golang.org/x/sys). In
+Unix-like Operating Systems, we can can get terminal settings by using the
+`unix.IoctlGetTermios()` function with `req` param set to `unix.TCGETS` from
+[`golang.org/x/sys/unix`](https://godoc.org/golang.org/x/sys/unix) package. This
+is equivalent to the Unix C Library function 
+[`tcgetattr()`](https://linux.die.net/man/3/tcgetattr) from `termios.h`. To set
+termial settings, we can similarly use `unix.IoctlSetTermios()` function with
+`req` param set to `unix.TCSETSF` which is equivalent to 
+[`tcsetattr()`](https://linux.die.net/man/3/tcsetattr). You may want to refer to
+the C Library documentation of the equivalent functions as they're richer.
 
-1. Reading the current terminal attributes into a `unix.Termios` struct
-2. Modifying the value of one or more fields in the struct with bit manipulation
-3. Writing back out the modified terminal attributes.
+Our approach is going to be:
+1. Read current terminal attributes with `IoctletTermios()` 
+2. Modify the flags we want with binary bit manipulation routines
+3. Write the modified attributes back using `IoctlSetTermios()` 
 
-Let's try turning off the `ECHO` feature this way. We will create the function to carry out this operation in a new file
-in the same `main`
-package called `rawmode_unix.go` to take advantage of a powerful feature of go called build tags. In code below, take a
-look at the very first line
-`// +build linux` which tells the Go compiler to only use this file when building for Linux targets. This way, we can
-later port GoKilo to Windows by creating a platform appropriate implementation with `// +build windows` tag
+Let's first try turning off the `ECHO` feature this way. When we turn off the
+`ECHO` feature, the screen will no longer show what key we are pressing. We will
+create the function to carry out this operation in a new file in the same `main`
+package called `rawmode_unix.go` to take advantage of a powerful feature of Go
+called [build constraints](https://pkg.go.dev/cmd/go#hdr-Build_constraints). In
+code below, take a look at the `// +build linux` in the first line which tells
+the Go compiler to only compile this file when building for Linux. This way,
+we can later port GoKilo to Windows by creating equivalent implementations in 
+a `rawmode_windows.go` file containing the `// +build windows` constraints.
 
-**Note**: you may use `darwin` or `freebsd` etc. instead of `linux` if you're following the tutorial on those systems. I
-haven't tested it personally, but it should work.
+**Note**: If you're following the tutorial along other Unix-like OS's, you should 
+modify the constraint to `// +build darwin` or `// +build freebsd` etc. Refer to
+GOOS section in [build environment](https://golang.org/doc/install/source#environment).
+While I have not personally tested this, it should work. 
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 5. Turn off echoing | rawmode_unix.go|
+| Turn off echoing | rawmode_unix.go|
 
 ```go
-
 // +build linux
 
 package main
@@ -165,13 +195,13 @@ func rawMode() error {
 
 	termios, err := unix.IoctlGetTermios(unix.Stdin, unix.TCGETS)
 	if err != nil {
-		return fmt.Errorf("could not fetch console settings: %s", err)
+		return fmt.Errorf("rawMode: error getting terminal flags: %w", err)
 	}
 
 	termios.Lflag = termios.Lflag &^ unix.ECHO
 
 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
-		return fmt.Errorf("could not set console settings: %s", err)
+		return fmt.Errorf("rawMode: error setting terminal flags: %w", err)
 	}
 
 	return nil
@@ -179,64 +209,119 @@ func rawMode() error {
 
 ```
 
-| **Commit Title** | **Location** |
-|:-----------------|---------:|
-| 5. Turn off echoing | main.go|
-
-```go
-
-func main() {
-
-//######## Lines to Add ##########
-
-if err := rawMode(); err != nil{
-fmt.Printf("Error: %s\n", err)
-os.Exit(1)
-}
-
-//################################
-
-r := bufio.NewReader(os.Stdin)
+After you create the above file, run the folowing command in your terminal to
+make sure Go modules will register the new `golang.org/x/sys/unix` dependency
+correctly in the `go.mod` file and download it into your environment.
+```
+go mod tidy
 ```
 
-The `unix.ECHO` feature causes each key you type to be printed to the terminal, so you can see what you're typing. This
-is useful in canonical mode, but really gets in the way when we are trying to carefully render a user interface in raw
-mode. So we turn it off. This program does the same thing as the one in the previous step, it just doesn't print what
-you are typing. You may be familiar with this mode if you've ever had to type a password at the terminal, when
-using `sudo` for example.
+Now, let's use the function in `main.go`
 
-Terminal attributes can be read into a `Termios` struct by `IoctlGetTermios()`. After modifying them, you can then apply
-them to the terminal using
-`IoctlSetTermios()`. The `unix.TCSETFSF` (ie. Flush) argument specifies when to apply the change: in this case, it waits
-for all pending output to be written to the terminal, and also discards any input that hasn't been read.
+| **Commit Title** | **Location** |
+|:-----------------|---------:|
+| Turn off echoing | main.go|
 
-The `Termios.Lflag` field is for "miscellaneous flags". The other flag fields are `Termios.Iflag` (input flags)
-, `Termios.Oflag` (output flags), and
-`Termios.Cflag` (control flags), most of which we will have to modify to enable raw mode.
+```diff
+ func main() {
+ 
++	if err := rawMode(); err != nil {
++		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
++		os.Exit(1)
++	}
++
+ 	r := bufio.NewReader(os.Stdin)
+ 
+ 	for {
+ 		b, err := r.ReadByte()
+ 
+ 		if err == io.EOF {
+ 			break
+ 		} else if err != nil {
+ 			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\n", err)
+ 			os.Exit(1)
+ 		}
+ 
+ 		if b == 'q' {
+ 			break
+ 		}
+ 	}
+ }
+```
+
+The `unix.ECHO` feature causes each key you type to be printed to the terminal,
+so you can see what you're typing. This is useful in canonical mode, but really
+gets in the way when we are trying to carefully render a user interface in raw
+mode. So we turn it off. This program does the same thing as the one in the
+previous step, it just doesn't print what you are typing. You may be familiar
+with this mode if you've ever had to type a password at the terminal, when using
+`sudo` for example.
+
+Terminal attributes can be read into a `Termios` struct by `IoctlGetTermios()`.
+After modifying them, you can then apply them to the terminal using
+`IoctlSetTermios()`. The `unix.TCSETFSF` (ie. Flush) argument specifies when to
+apply the change: in this case, it waits for all pending output to be written to
+the terminal, and also discards any input that hasn't been read.
+
+The `Termios.Lflag` field is for "miscellaneous flags". The other flag fields
+are `Termios.Iflag` (input flags), `Termios.Oflag` (output flags), and
+`Termios.Cflag` (control flags), many of which we will have to modify to enable
+raw mode.
 
 `unix.ECHO` is a [bitflag](https://en.wikipedia.org/wiki/Bit_field), defined as
 `00000000000000000000000000001000` in binary. We use the bitwise-NOT operator
-(`~`) on this value to get `11111111111111111111111111110111`. We then bitwise-AND this value with the flags field,
-which forces the fourth bit in the flags field to become `0`, and causes every other bit to retain its current value.
-Flipping bits like this is common in systems proramming.
+(`~`) on this value to get `11111111111111111111111111110111`. We then
+bitwise-AND this value with the flags field, which forces the fourth bit in the
+flags field to become `0`, and causes every other bit to retain its current
+value. Flipping bits like this is common in systems proramming.  We finally add
+a call to this function in our `main()` function at the beginning.
 
-We finally add a call to this function in our `main()` function at the beginning.
+When returning errors from `rawMode()` function, note how we're using the
+`fmt.Errorf()` function with the `%w` formatting instruction to return an error
+that **wraps** the error we receive from the library function with a bit of
+context relevant messaging. To see the error in action, rather than building and
+running `gokilo` from your terminal, try runing or debugging the program from
+your code editor or IDE. You should see some kind of an error message like below
+where the error from the library "inappropriate ioctl..." is wrapped by a more
+contextual message explaining we ran into the issue in `rawMode()` function when
+trying to get terminal flags.
+```
+Error: rawMode: error getting terminal flags: inappropriate ioctl for device
+```
+This error happens becuase during debugging, IDEs capture the standard
+inputs and outputs provided to the program so that they can display any errors
+or messages in the IDE. Therefore they no longer represent real physical devices
+where you can do things like turn off `ECHO`. You'll see the same kind of error
+if you run something like the below in your terminal where you're re-directing
+input from the Unix `echo` command to `gokilo`. 
+```
+echo "abcd" | ./gokilo
+```
+You can even check by going back to the previous commit ("Press q to quit") and
+rebuilding `gokilo` that this command above wouldn't have produced errors then
+as the program would have happily received "abcd" from the standard input and would
+have received <kbd>Ctrl-D</kbd> at the end of it.
 
-After the program quits, depending on your shell, you may find your terminal is still not echoing what you type. Don't
-worry, it will still listen to what you type. Just press <kbd>Ctrl-C</kbd> to start a fresh line of input to your shell,
-and type in `reset` and press <kbd>Enter</kbd>. This resets your terminal back to normal in most cases. Failing that,
-you can always restart your terminal emulator. We'll fix this whole problem in the next step.
+After the program quits, depending on your shell, you may find your terminal is
+still not echoing what you type. Don't worry, it will still listen to what you
+type. Just press <kbd>Ctrl-C</kbd> to start a fresh line of input to your shell,
+and type in `reset` and press <kbd>Enter</kbd>. This resets your terminal back
+to normal in most cases. Failing that, you can always restart your terminal
+emulator. We'll fix this whole problem in the next step.
 
 ## 6. Disable raw mode at exit
 
-Let's be nice to the user and restore their terminal's original attributes when our program exits. We'll save a copy of
-the `Termios` struct in its original state, and use `unix.IoctlSetTermios()` to apply it to the terminal when the
+Let's be nice to the user and restore their terminal's original attributes when
+our program exits. We'll save a copy of the `Termios` struct in its original
+state, and use `unix.IoctlSetTermios()` to apply it to the terminal when the
 program exits with a new function called `restore()`.
 
-Keeping platform portability in mind, `Termios` is not really defined on the Windows platform, so rather than have
-the `rawMode()` function return it directly, we will serialize it using Go's native `encoding/gob`
-package into a byte slice that can be saved by he caller and passed back to be decoded and restored. Since Go supports
-multiple return values from functions, we can return both the byte slice and any error encountered.
+Keeping platform portability in mind, `Termios` is not really defined on the
+Windows platform, so rather than have the `rawMode()` function return it
+directly, we will serialize it using Go's native `encoding/gob` package into a
+byte slice that can be saved by he caller and passed back to be decoded and
+restored. Since Go supports multiple return values from functions, we can return
+both the byte slice and any error encountered.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|

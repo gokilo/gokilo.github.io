@@ -312,107 +312,122 @@ emulator. We'll fix this whole problem in the next step.
 ## 6. Disable raw mode at exit
 
 Let's be nice to the user and restore their terminal's original attributes when
-our program exits. We'll save a copy of the `Termios` struct in its original
-state, and use `unix.IoctlSetTermios()` to apply it to the terminal when the
-program exits with a new function called `restore()`.
+our program exits. We'll save a copy of the `Termios` struct with its original
+flags state and use `unix.IoctlSetTermios()` to restore it when the program
+exits.
 
-Keeping platform portability in mind, `Termios` is not really defined on the
-Windows platform, so rather than have the `rawMode()` function return it
-directly, we will serialize it using Go's native `encoding/gob` package into a
-byte slice that can be saved by he caller and passed back to be decoded and
-restored. Since Go supports multiple return values from functions, we can return
-both the byte slice and any error encountered.
+Go supports irst class functions, higher-order functions, user-defined function
+types, function literals, closures and multiple return values. However, the way
+we enter and exit raw mode related data we need to save differs by OS. To
+improve OS portability and abstract away complexity from the rest of the program,
+we'll have `rawMode()` return a simple function clousure can be invoked to
+restore terminal settings.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 6. Disable raw mode at exit| rawmode_unix.go|
+| Disable raw mode at exit| rawmode_unix.go|
 
-```go
-
-import (
-//######## Lines to Add/Change ##########
-"bytes"
-"encoding/gob"
-//################################
-
-"fmt"
-
-"golang.org/x/sys/unix"
-)
-
-//######## Lines to Add/Change ##########
-
-func rawMode() ([]byte, error) {
-
-termios, err := unix.IoctlGetTermios(unix.Stdin, unix.TCGETS)
-if err != nil {
-return nil, fmt.Errorf("could not fetch console settings: %s", err)
-}
-
-buf := bytes.Buffer{}
-if err := gob.NewEncoder(&buf).Encode(termios); err != nil {
-return nil, fmt.Errorf("could not serialize console settings: %w", err)
-}
-
-termios.Lflag = termios.Lflag &^ unix.ECHO
-
-if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
-return nil, fmt.Errorf("could not set console settings: %s", err)
-}
-
-return buf.Bytes(), nil
-}
-
-// Restore restoes the console to a previous row setting
-func restore(original []byte) error {
-
-var termios unix.Termios
-
-if err := gob.NewDecoder(bytes.NewReader(original)).Decode(&termios); err != nil {
-return fmt.Errorf("could not decode original console settings: %w", err)
-}
-
-if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, &termios); err != nil {
-return fmt.Errorf("could not restore original console settings: %w", err)
-}
-return nil
-}
-
-//################################
-
+```diff
+ // +build linux
+ 
+ package main
+ 
+ import (
+ 	"fmt"
++	"os"
+ 
+ 	"golang.org/x/sys/unix"
+ )
+ 
+-func rawMode() error {
++// rawMode modifies terminal settings to enable raw mode in a platform specific
++// way. It returns a function that can be invoked to restore previous settings.
++func rawMode() (func(), error) {
+ 
+ 	termios, err := unix.IoctlGetTermios(unix.Stdin, unix.TCGETS)
+ 	if err != nil {
+-		return fmt.Errorf("rawMode: error getting terminal flags: %w", err)
++		return nil, fmt.Errorf("rawMode: error getting terminal flags: %w", err)
+ 	}
+ 
++	copy := *termios
++
+ 	termios.Lflag = termios.Lflag &^ unix.ECHO
+ 
+ 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+-		return fmt.Errorf("rawMode: error setting terminal flags: %w", err)
++		return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+ 	}
+ 
+-	return nil
++	return func() {
++		if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, &copy); err != nil {
++			fmt.Fprintf(os.Stderr, "rawMode: error restoring originl console settings: %s", err)
++		}
++	}, nil
+ }
 ```
 
-In the `main()` function, we store the serialized version of the original `Termios` settings in byte slice
-called `origTermios`. We can now `defer` a call to `restore()` passing `origTermios`
-that will cause `restore()` to be called automatically when the program exits, whether it exits by returning
-from `main()`, or by calling the `exit()` function.
+Take a look at the new function signature of `rawMode()` which takes advantage
+of multiple return value and first class functions support in Go.  `rawMode()`
+returns two values now - a function that takes no parameters in addition to the
+error value. The caller can save the returned function in a variable & invoke
+it. We can define `rawMode()` function signature in exactly the same way across
+all OSes abstracting away complexity from the program & enhancing portability.
+```go 
+func rawMode() (func(), error)
+```
 
-Also instead of calling `restore()` directly in defer, let us wrap it in
-a [function clousure](https://tour.golang.org/moretypes/25) to let us handle any errors that may happen during the call.
-Using defer and function clousures lets us avoid global variables.
+Also look at the last return statement. We're returning a function clousure that
+can accesses the `copy` variable originally defined in this function even after
+the function returns and use it to restore terminal settings. You can learn more
+about Go's first class functions features in [this
+codewalk](https://golang.org/doc/codewalk/functions/).
+```go
+	return func() {
+		if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, &copy); err != nil {
+			fmt.Fprintf(os.Stderr, "rawMode: error restoring originl console settings: %s", err)
+		}
+	}, nil
+```
+
+Finally in the `main()` function, we store the returned function in the
+`restoreFunc` variable and `defer` a call to it which will cause it to be
+invoked whenever `main()` exits.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 6. Disable raw mode at exit| main.go|
+| Disable raw mode at exit| main.go|
 
-```go
-func main() {
+```diff
 
-//######## Lines to Add/Change ##########
-
-origTermios, err := rawMode()
-if err != nil {
-fmt.Printf("Error: %s\n", err)
-os.Exit(1)
-}
-
-defer func () {
-if err := restore(origTermios); err != nil {
-fmt.Printf("Error: %s\n", err)
-}
-}()
-
-//################################
+ func main() {
+ 
+-	if err := rawMode(); err != nil {
++	restoreFunc, err := rawMode()
++	if err != nil {
+ 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+ 		os.Exit(1)
+ 	}
++	defer restoreFunc()
+ 
+ 	r := bufio.NewReader(os.Stdin)
+ 
+ 	for {
+ 		b, err := r.ReadByte()
+ 
+ 		if err == io.EOF {
+ 			break
+ 		} else if err != nil {
+ 			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\n", err)
+ 			os.Exit(1)
+ 		}
+ 
+ 		if b == 'q' {
+ 			break
+ 		}
+ 	}
+ }
 
 ```
 

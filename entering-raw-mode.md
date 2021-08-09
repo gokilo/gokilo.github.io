@@ -901,21 +901,14 @@ whoever that someone was) in our program. From what we can tell
 Now that we are able to get into raw mode and also restore safely, let's create
 a helper function that we can call anywhere from our program to exit raw mode
 safely, show error messages if any and indicate to the OS whether we exited
-cleanly or with errors.
+cleanly or with errors. We will from now on always use `safeExit()` to exit from
+the program.
 
-To do this, we are agian going to take advantage of 
-[First Class Functions](https://golang.org/doc/codewalk/functions/). 
-We will first create a globally accessible variable `safeExit` which takes the
-type `func(error)`. In other words, we can assign to this variable any function
-that takes an `error` as a parameter and returns nothing.
-
-Then after we get `restoreFunc` by calling `rawMode()`, we can set `safeExit` to
-an anonymous function that restores terminal settings and also prints an error
-message if `safeExit` was called with a non-`nil` error value.
-
-Finally, we can simply change the `defer` statement to call `safeExit(nil)` to
-call it with no error and similarly change the places we need to exit with error
-to `safeExit(err)`
+We will create a global variable called `globalState` to hold state information
+[anonymous struct](https://talks.golang.org/2012/10things.slide#2) and store the
+function to restore terminal settings as state variable within it. We will
+subsequently add more state variables like the number of rows and columns in the
+terminal etc.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
@@ -931,32 +924,36 @@ to `safeExit(err)`
  	"os"
  	"unicode"
  )
- 
-+var safeExit func(error)
+
++var globalState = struct {
++	restoreTerminal func()
++}{
++	nil,
++}
++
++func safeExit(err error) {
++	if globalState.restoreTerminal != nil {
++		globalState.restoreTerminal()
++	}
++ 
++ 	if err != nil {
++ 		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
++ 		os.Exit(1)
++ 	}
++	os.Exit(0)
++}
 +
  func main() {
- 
- 	restoreFunc, err := rawMode()
-+
-+	safeExit = func(err error) {
-+		if restoreFunc != nil {
-+			restoreFunc()
-+		}
-+
-+		if err != nil {
-+			fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
-+			os.Exit(1)
-+		}
-+		os.Exit(0)
-+	}
-+	defer safeExit(nil)
-+
- 	if err != nil {
--		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
--		os.Exit(1)
+
+	restoreFunc, err := rawMode()
++	if err != nil {
+- 		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+- 		os.Exit(1)
 +		safeExit(err)
- 	}
++	}
 -	defer restoreFunc()
++	globalState.restoreTerminal = restoreFunc
++	defer safeExit(nil)
  
  	r := bufio.NewReader(os.Stdin)
  
@@ -964,7 +961,8 @@ to `safeExit(err)`
  		ru, _, err := r.ReadRune()
  
  		if err == io.EOF {
- 			break
+-			break
++			safeExit(nil)
  		} else if err != nil {
 -			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\r\n", err)
 -			os.Exit(1)
@@ -977,13 +975,12 @@ to `safeExit(err)`
  		}
  
  		if ru == 'q' {
- 			break
+-			break
++			safeExit(nil)
  		}
  	}
  }
-
 ```
-
 That just about concludes this chapter on entering raw mode. In the [next
 chapter](/raw-input-and-output.html), we'll do some more low-level terminal
 input/output handling, and use that to draw to the screen and allow the user to

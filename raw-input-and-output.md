@@ -4,6 +4,147 @@ title: Raw Input and Output
 nav_order: 4
 ---
 
+## 17. Refactor keyboard input
+
+Let's make a function for low-level keypress reading, and another function for
+mapping keypresses to editor operations moving them out of the main loop.
+
+We'll create `readKey()` function in a new file `terminal.go` which for now
+simply mirrors what we're doing in `main()`. The only tweak is that we'll
+initialize the `bufio.Reader` just once as a global variable `keyReader`. We'll
+expand this `ReadKey()` function to handle escape sequences, which involves
+reading multiple runes that represent a single keypress, as is the case with the
+arrow keys.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| Refactor keyboard input | terminal.go|
+
+```diff
++package main
++
++import (
++	"bufio"
++	"os"
++)
++
++var keyReader = bufio.NewReader(os.Stdin)
++
++func readKey() (rune, error) {
++	ru, _, err := keyReader.ReadRune()
++	return ru, err
++}
+
+```
+We will create another file `input.go` and define `processKey()` that to handle
+key presses. Again we've simply moved existing functionality from `main()` here
+though note that we've dropped the EOF character handling as we're alreary in
+raw mode. Later, we will map various key combinations and other special keys
+to different editor functions, and insert any alphanumeric and other printable
+keys' characters into the text that is being edited.
+
+Note that `readKey()` belongs in `terminal.go` because it deals with 
+low-level terminal input, whereas `processKey()` belongs in 
+`input.go` because it deals with mapping keys to editor functions
+at a much higher level.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| Refactor keyboard input | input.go|
+
+```diff
++package main
++
++import (
++	"fmt"
++	"unicode"
++)
++
++func processKey(key rune) {
++
++	if unicode.IsControl(key) {
++		fmt.Printf("%d\r\n", key)
++	} else {
++		fmt.Printf("%d (%c)\r\n", key, key)
++	}
++
++	if key == 'q' {
++		safeExit(nil)
++	}
++}
+```
+
+Finally, we'll massively simplify `main()`, and we will try to keep it that way.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| Refactor keyboard input | main.go|
+
+```diff
+ package main
+ 
+ import (
+-	"bufio"
+ 	"fmt"
+-	"io"
+ 	"os"
+-	"unicode"
+ )
+ 
+ var globalState = struct {
+ 	restoreTerminal func()
+ }{
+ 	nil,
+ }
+ 
+ func safeExit(err error) {
+ 	if globalState.restoreTerminal != nil {
+ 		globalState.restoreTerminal()
+ 	}
+ 
+ 	if err != nil {
+ 		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+ 		os.Exit(1)
+ 	}
+ 	os.Exit(0)
+ }
+ 
+ func main() {
+ 
+ 	restoreFunc, err := rawMode()
+ 	if err != nil {
+ 		safeExit(err)
+ 	}
+ 	globalState.restoreTerminal = restoreFunc
+ 	defer safeExit(nil)
+ 
+-	r := bufio.NewReader(os.Stdin)
+-
+ 	for {
+-		ru, _, err := r.ReadRune()
+-
+-		if err == io.EOF {
+-			safeExit(nil)
+-		} else if err != nil {
++		key, err := readKey()
++		if err != nil {
+ 			safeExit(err)
+ 		}
+-		if unicode.IsControl(ru) {
+-			fmt.Printf("%d\r\n", ru)
+-		} else {
+-			fmt.Printf("%d (%c)\r\n", ru, ru)
+-		}
+-
+-		if ru == 'q' {
+-			safeExit(nil)
+-		}
++		processKey(key)
+ 	}
+ }
+
+```
+
 ## 17. Press <kbd>Ctrl-Q</kbd> to quit
 
 Last chapter we saw that the <kbd>Ctrl</kbd> key combined with the alphabetic
@@ -70,130 +211,6 @@ it strips bits 5 and 6 from whatever key you press in combination with
 The ASCII character set seems to be designed this way on purpose. 
 (It is also similarly designed so that you can set and clear bit 5 to switch 
 between lowercase and uppercase.)
-
-## 18. Refactor keyboard input
-
-Let's make a function for low-level keypress reading, and another function for
-mapping keypresses to editor operations. 
-
-We'll create the `ReadKey()` routine in a new file `terminal.go`.
-To read user key presses one byte at a time, we've been using a 
-`bufio.Reader` instantiated inside `main()`. To generalize, we'll
-create a `KeyReader` type embedding `bufio.Reader` that's initialized
-to read from terminal when `NewKeyReader()` is called. Finally we'll
-define the `ReadKey()` function under this type. This way, we
-avoid global variables.
-
-We'll expand this `ReadKey()` function to handle escape sequences,
-which involves reading multiple bytes that represent a single keypress,
-as is the case with the arrow keys.
-
-| **Commit Title** | **File** |
-|:-----------------|---------:|
-| 17. Refactor keyboard input | terminal.go|
-
-```go
-
-package main
-
-import (
-	"bufio"
-	"os"
-)
-
-// KeyReader reads key-presses fron terminal
-type KeyReader struct {
-	*bufio.Reader
-}
-
-// NewKeyReader initializes a key reader and sets it
-// to read key presses from os.Stdin
-func NewKeyReader() *KeyReader {
-	return &KeyReader{
-		bufio.NewReader(os.Stdin),
-	}
-}
-
-// ReadKey reads a single key from the keyboard
-func (kr *KeyReader) ReadKey() (byte, error) {
-	return kr.ReadByte()
-}
-
-```
-
-We will create another file `input.go` and define  `processKeyPress()` that
-waits for a keypress from a `KeyReader`, and then handles it. Later, it
-will map various <kbd>Ctrl</kbd> key combinations and other special keys to
-different editor functions, and insert any alphanumeric and other printable
-keys' characters into the text that is being edited.
-
-Note that `ReadKey()` belongs in `terminal.go` because it deals with 
-low-level terminal input, whereas `processKeypress()` belongs in 
-`input.go` because it deals with mapping keys to editor functions
-at a much higher level.
-
-| **Commit Title** | **File** |
-|:-----------------|---------:|
-| 17. Refactor keyboard input | input.go|
-
-```go
-
-package main
-
-import (
-	"io"
-)
-
-func processKeyPress(kr *KeyReader) {
-
-	b, err := kr.ReadKey()
-
-	if err == io.EOF {
-		safeExit(nil)
-	} else if err != nil {
-		safeExit(err)
-	}
-
-	if b == cntrlKey('q') {
-		safeExit(nil)
-	}
-}
-
-```
-
-Now we have vastly simplified `main()`, and we will try to keep it that way.
-Note that you will also want to remove imports of `bufio` and `io` which
-would have been required previously to compile successfully since 
-
-| **Commit Title** | **File** |
-|:-----------------|---------:|
-| 17. Refactor keyboard input | input.go|
-
-
-```go
-
-import (
-	// "bufio"  <- REMOVE
-	"fmt"
-	// "io"     <- REMOVE
-	"os"
-)
-
-// ---
-
-func main(){
-
-    // ---
-
-    //######## Lines to Add/Change ##########
-    kr := NewKeyReader()
-
-    for {
-        processKeyPress(kr)
-    }
-    //######## Lines to Add/Change ##########
-}
-```
 
 ## 18. Clear the screen
 

@@ -145,72 +145,125 @@ Finally, we'll massively simplify `main()`, and we will try to keep it that way.
 
 ```
 
-## 17. Press <kbd>Ctrl-Q</kbd> to quit
+## 18. Press <kbd>Ctrl-Q</kbd> to quit
 
 Last chapter we saw that the <kbd>Ctrl</kbd> key combined with the alphabetic
 keys seemed to map to bytes 1&ndash;26. We can use this to detect
 <kbd>Ctrl</kbd> key combinations and map them to different operations in our
-editor. We'll start by mapping <kbd>Ctrl-Q</kbd> to the quit operation.
-We'll also stop printing out keypresses at this point.
-
-
-| **Commit Title** | **File** |
-|:-----------------|---------:|
-| 17. Press Ctrl-Q to quit | main.go|
-
-```go
-
-func isCntrl(b byte) bool {
-	if b <= 0x1f || b == 0x7f {
-		return true
-	}
-	return false
-}
-
-//######## Lines to Add/Change ##########
-func cntrlKey(b byte) byte {
-	return b & 0x1f
-}
-//#######################################
-
-func main() {
-
-```
+editor. We'll start by mapping <kbd>Ctrl-Q</kbd> to the quit operation and we'll
+start re-structuring the keyboard input functions to handle more complex cases.
 
 | **Commit Title** | **File** |
 |:-----------------|---------:|
-| 17. Press Ctrl-Q to quit | main.go|
+| Press Ctrl-Q to quit | terminal.go|
 
-```go
-
-
-	for {
-		b, err := r.ReadByte()
-
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			safeExit(err)
-		}
-
-        //######## Lines to Add/Change ##########
-		if b == cntrlKey('q') {
-			break
-        }
-        //#######################################
-    }
+```diff
+ package main
+ 
+ import (
+ 	"bufio"
+ 	"os"
++	"unicode"
++)
++
++type KeyType int
++
++const (
++	RegKey = iota
++	CtrlKey
++)
++
++type Key struct {
++	KeyType KeyType
++	Key     rune
++}
++
++const (
++	KeyCtrlQ = 17
+ )
+ 
+ var keyReader = bufio.NewReader(os.Stdin)
+ 
+-func readKey() (rune, error) {
++func readKey() (Key, error) {
+ 	ru, _, err := keyReader.ReadRune()
+-	return ru, err
++	if err != nil {
++		return Key{}, err
++	}
++
++	switch {
++	case unicode.IsControl(ru):
++		return Key{CtrlKey, ru}, err
++	default:
++		return Key{RegKey, ru}, err
++
++	}
+ }
 
 ```
 
-The `ctrlKey()` function bitwise-ANDs a character with the value `00011111`, in
-binary. We generally specify bitmasks using hexadecimal, for conciseness and
-readiability. In other words, it sets the upper 3 bits of the character
-to `0`. This mirrors what the <kbd>Ctrl</kbd> key does in the terminal: 
-it strips bits 5 and 6 from whatever key you press in combination with
-<kbd>Ctrl</kbd>, and sends that. (By convention, bit numbering starts from 0.) 
-The ASCII character set seems to be designed this way on purpose. 
-(It is also similarly designed so that you can set and clear bit 5 to switch 
-between lowercase and uppercase.)
+There's a lot going on here, so let's break it down piece by piece. First we're
+defining `KeyType` as a new data type based on `int` and then declaring
+constants of this type for regular and control characters. We could just use
+`int` but declaring a new type helps with clarity & helps IDEs.
+
+We then create a struct `Key` which will represent the pressed key instead of a
+plain rune to allow us to treat special keys the same way. It will have a field
+`KeyType` to describe the type of the key and a `rune` which holds the actual key
+value. Since runes are [simply 32 bit integers](https://blog.golang.org/strings#TOC_5.)
+we'll also use they same field to hold values representing special keys and
+we're defining the constant `KeyCtrlQ` as `17` as it's the 17th letter in the
+English alphabet and we've already seen <kbd>Ctrl<kbd> characters map to codes 1
+to 26. 
+
+Finally, we edit the `readKey()` function to return a `Key` instead of a plain rune.
+
+
+We then need to change `processKey()` to work on the new Key type rather than a
+`rune`. The changes here are much simpler, since now we're getting the key type
+directly.
+
+| **Commit Title** | **File** |
+|:-----------------|---------:|
+| Press Ctrl-Q to quit | input.go|
+
+```diff
+ package main
+ 
+ import (
+ 	"fmt"
+-	"unicode"
+ )
+ 
+-func processKey(key rune) {
++func processKey(key Key) {
+ 
+-	if unicode.IsControl(key) {
+-		fmt.Printf("%d\r\n", key)
+-	} else {
+-		fmt.Printf("%d (%c)\r\n", key, key)
++	switch key.KeyType {
++	case CtrlKey:
++		fmt.Printf("Control Key: %d\r\n", key.Key)
++	case RegKey:
++		fmt.Printf("Regular Key: %d (%c)\r\n", key.Key, key.Key)
+ 	}
+ 
+-	if key == 'q' {
++	if key.KeyType == CtrlKey && key.Key == KeyCtrlQ {
+ 		safeExit(nil)
+ 	}
+ }
+ ```
+
+Interstingly enough, there are no changes to be made in `main.go`. Since we're
+using the `:=` short assignment statement to capture returned values from
+`readKey()`, the compiler automatically infers its type correctly.
+
+```go
+		key, err := readKey()
+```
 
 ## 18. Clear the screen
 

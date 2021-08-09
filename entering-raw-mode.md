@@ -461,92 +461,112 @@ now on, we'll only show relevant lines of the changes vs. the whole listing.
 
 ## 8. Display keypresses
 
-To get a better idea of how input in raw mode works, let's print out each byte that we read. We'll print each character'
-s numeric ASCII value, as well as the character it represents if it is a printable character.
+To get a better idea of how input in raw mode works, let's print out each byte
+that we read. We'll print each character' s numeric ASCII value, as well as the
+character it represents if it is a printable character.
 
-Let's first create a small function `isCntrl()` to tests whether a character is a control character. Control characters
-are nonprintable characters that we don't want to print to the screen. ASCII codes 0&ndash;31 are all control
-characters, and 127 is also a control character. ASCII codes 32&ndash;126 are all printable. (Check out the
-[ASCII table](http://asciitable.com) to see all of the characters.)
-
-| **Commit Title** | **Location** |
-|:-----------------|---------:|
-| 8. Display Keypresses| main.go|
-
-```go
-
-"os"
-)
-
-//######## Lines to Add/Change ##########
-
-func isCntrl(b byte) bool {
-if b <= 0x1f || b == 0x7f {
-return true
-}
-return false
-}
-
-//################################
-
-func main() {
-
-```
-
-`fmt.Printf()` can print multiple representations of a byte. `%d` tells it to format the byte as a decimal number (its
-ASCII code), and `%c` tells it to write out the byte directly, as a character.
+A key choice we'll make at this stage is to add some level of basic support for
+[Unicode UTF-8 encoding](https://www.joelonsoftware.com/2003/10/08/the-absolute-minimum-every-software-developer-absolutely-positively-must-know-about-unicode-and-character-sets-no-excuses/)
+as most modern languages and text documents support UTF-8 while it is also fully
+backwards compatible with ASCII. However, we won't support advanced features like
+[combining characters](https://en.wikipedia.org/wiki/Combining_character) etc.
+Go has [support for Unicode](https://blog.golang.org/strings) in its
+[standard library](https://pkg.go.dev/unicode) and a unicode code point is
+represented by a data type called `rune`. So we will now use `ReadRune()`
+instead of `ReadByte()`.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 8. Display Keypresses| main.go|
+| Display Keypresses| main.go|
 
-```go
-
-fmt.Printf("Error reading from Stdin: %s\n", err)
-os.Exit(1)
-}
-
-//######## Lines to Add/Change ##########
-
-if isCntrl(b) {
-fmt.Printf("%d\n", b)
-} else {
-fmt.Printf("%d (%c)\n", b, b)
-}
-
-//################################
-
-if b == 'q' {
-
+```diff
+ package main
+ 
+ import (
+ 	"bufio"
+ 	"fmt"
+ 	"io"
+ 	"os"
++	"unicode"
+ )
+ 
+ func main() {
+ 
+ 	restoreFunc, err := rawMode()
+ 	if err != nil {
+ 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+ 		os.Exit(1)
+ 	}
+ 	defer restoreFunc()
+ 
+ 	r := bufio.NewReader(os.Stdin)
+ 
+ 	for {
+-		b, err := r.ReadByte()
++		ru, _, err := r.ReadRune()
+ 
+ 		if err == io.EOF {
+ 			break
+ 		} else if err != nil {
+ 			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\n", err)
+ 			os.Exit(1)
+ 		}
++		if unicode.IsControl(ru) {
++			fmt.Printf("%d\n", ru)
++		} else {
++			fmt.Printf("%d (%c)\n", ru, ru)
++		}
+ 
+-		if b == 'q' {
++		if ru == 'q' {
+ 			break
+ 		}
+ 	}
+ }
 ```
 
-This is a very useful program. It shows us how various keypresses translate into the bytes we read. Most ordinary keys
-translate directly into the characters they represent. But try seeing what happens when you press the arrow keys,
-or <kbd>Escape</kbd>, or <kbd>Page Up</kbd>, or <kbd>Page Down</kbd>, or
+We are using `unicode.IsControl()` to identify if the character is a regular
+printable character or a control character. For printable characters, we'll
+display both its character code as a number & the character itself using
+`fmt.Printf()` format instructions. For control characters, we'll only display
+the numerical character code.
+- `%d` tells it to format the `rune` as a decimal number (character code)
+- `%c` tells it to display the printable character of the `rune`
+
+This is a very useful program. It shows us how various keypresses translate into
+the bytes we read. Most ordinary keys translate directly into the characters
+they represent. But try seeing what happens when you press the arrow keys, or
+<kbd>Escape</kbd>, or <kbd>Page Up</kbd>, or <kbd>Page Down</kbd>, or
 <kbd>Home</kbd>, or <kbd>End</kbd>, or <kbd>Backspace</kbd>, or
 <kbd>Delete</kbd>, or <kbd>Enter</kbd>. Try key combinations with
-<kbd>Ctrl</kbd>, like <kbd>Ctrl-A</kbd>, <kbd>Ctrl-B</kbd>, etc.
+<kbd>Ctrl</kbd>, like <kbd>Ctrl-A</kbd>, <kbd>Ctrl-B</kbd>, etc. You'll notice a
+few interesting things:
 
-You'll notice a few interesting things:
-
-* Arrow keys, <kbd>Page Up</kbd>, <kbd>Page Down</kbd>, <kbd>Home</kbd>, and
-  <kbd>End</kbd> all input 3 or 4 bytes to the terminal: `27`, `'['`, and then one or two other characters. This is
-  known as an *escape sequence*. All escape sequences start with a `27` byte. Pressing <kbd>Escape</kbd> sends a
-  single `27` byte as input.
-* <kbd>Backspace</kbd> is byte `127`. <kbd>Delete</kbd> is a 4-byte escape sequence.
-* <kbd>Enter</kbd> is byte `10`, which is a newline character, also known as
+- Movement keys like Arrow keys, <kbd>Page Up</kbd>, <kbd>Page Down</kbd>,
+  <kbd>Home</kbd>, and <kbd>End</kbd> all input 3 or 4 characters to the terminal:
+  `27`, `'['`, and then one or two more characters. This is known as an *escape
+  sequence*. All escape sequences start with a `27` byte. Pressing
+  <kbd>Escape</kbd> sends a single `27` byte as input.
+- Function keys also return escape sequences
+- <kbd>Backspace</kbd> is byte `127` while <kbd>Delete</kbd> is a 4-byte escape sequence.
+- <kbd>Enter</kbd> is byte `10`, which is a newline character, also known as
   `'\n'`.
-* <kbd>Ctrl-A</kbd> is `1`, <kbd>Ctrl-B</kbd> is `2`, <kbd>Ctrl-C</kbd> is... oh, that terminates the program, right.
-  But the <kbd>Ctrl</kbd> key combinations that do work seem to map the letters A&ndash;Z to the codes 1&ndash;26.
-
-On some consoles, if you happen to press <kbd>Ctrl-S</kbd>, you may find your program seems to be frozen. What you've
-done is you've asked your program to [stop sending you output](https://en.wikipedia.org/wiki/Software_flow_control).
-Press
-<kbd>Ctrl-Q</kbd> to tell it to resume sending you output.
-
-Also, if you press <kbd>Ctrl-Z</kbd> (or maybe <kbd>Ctrl-Y</kbd>), your program will be suspended to the background. Run
-the `fg` command to bring it back to the foreground but it may no longer be in raw mode. It may also quit immediately
-after you do that, as a result of the underlying File reader returning error.
+- <kbd>Ctrl-A</kbd> is `1`, <kbd>Ctrl-B</kbd> is `2`, <kbd>Ctrl-C</kbd> is...
+  oh, that terminates the program, right. But the <kbd>Ctrl</kbd> key
+  combinations that do work seem to map the letters A&ndash;Z to the codes
+  1&ndash;26.
+- On some consoles, if you happen to press <kbd>Ctrl-S</kbd>, you may find your
+  program seems to be frozen. What you've done is you've asked your program to
+  [stop sending you output](https://en.wikipedia.org/wiki/Software_flow_control).
+  Press <kbd>Ctrl-Q</kbd> to tell it to resume sending you output.
+- Also, if you press <kbd>Ctrl-Z</kbd> (or maybe <kbd>Ctrl-Y</kbd>), your
+  program will be suspended to the background. Run the `fg` command to bring it
+  back to the foreground but it may no longer be in raw mode. It may also quit
+  immediately after you do that, as a result of the underlying File reader
+  returning error.
+- You should be able to [input unicode](https://en.wikipedia.org/wiki/Unicode_input)
+  characters that are not in your keyboard either by copy/pasting or via one of the
+  supported mechanisms in your OS.
 
 ## 9. Turn off <kbd>Ctrl-C</kbd> and <kbd>Ctrl-Z</kbd> signals
 

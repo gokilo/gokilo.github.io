@@ -543,12 +543,13 @@ they represent. But try seeing what happens when you press the arrow keys, or
 few interesting things:
 
 - Movement keys like Arrow keys, <kbd>Page Up</kbd>, <kbd>Page Down</kbd>,
-  <kbd>Home</kbd>, and <kbd>End</kbd> all input 3 or 4 characters to the terminal:
-  `27`, `'['`, and then one or two more characters. This is known as an *escape
-  sequence*. All escape sequences start with a `27` byte. Pressing
+  <kbd>Home</kbd>, and <kbd>End</kbd> all input 3 or 4 characters to the
+  terminal: `27`, `'['`, and then one or two more characters. This is known as
+  an *escape sequence*. All escape sequences start with a `27` byte. Pressing
   <kbd>Escape</kbd> sends a single `27` byte as input.
 - Function keys also return escape sequences
-- <kbd>Backspace</kbd> is byte `127` while <kbd>Delete</kbd> is a 4-byte escape sequence.
+- <kbd>Backspace</kbd> is byte `127` while <kbd>Delete</kbd> is a 4-byte escape
+  sequence.
 - <kbd>Enter</kbd> is byte `10`, which is a newline character, also known as
   `'\n'`.
 - <kbd>Ctrl-A</kbd> is `1`, <kbd>Ctrl-B</kbd> is `2`, <kbd>Ctrl-C</kbd> is...
@@ -557,92 +558,133 @@ few interesting things:
   1&ndash;26.
 - On some consoles, if you happen to press <kbd>Ctrl-S</kbd>, you may find your
   program seems to be frozen. What you've done is you've asked your program to
-  [stop sending you output](https://en.wikipedia.org/wiki/Software_flow_control).
-  Press <kbd>Ctrl-Q</kbd> to tell it to resume sending you output.
+  [stop sending you output](https://en.wikipedia.org/wiki/Software_flow_control). Press
+  <kbd>Ctrl-Q</kbd> to tell it to resume sending you output.
 - Also, if you press <kbd>Ctrl-Z</kbd> (or maybe <kbd>Ctrl-Y</kbd>), your
   program will be suspended to the background. Run the `fg` command to bring it
   back to the foreground but it may no longer be in raw mode. It may also quit
   immediately after you do that, as a result of the underlying File reader
   returning error.
-- You should be able to [input unicode](https://en.wikipedia.org/wiki/Unicode_input)
-  characters that are not in your keyboard either by copy/pasting or via one of the
-  supported mechanisms in your OS.
+- You should be able to [input
+  unicode](https://en.wikipedia.org/wiki/Unicode_input) characters that are not
+  in your keyboard either by copy/paste or one of the supported unicode input
+  mechanisms in your OS.
 
 ## 9. Turn off <kbd>Ctrl-C</kbd> and <kbd>Ctrl-Z</kbd> signals
 
-By default, <kbd>Ctrl-C</kbd> sends a `SIGINT` signal to the current process which causes it to terminate, and <kbd>
-Ctrl-Z</kbd> sends a `SIGTSTP` signal to the current process which causes it to suspend. Let's turn off the sending of
-both of these signals.
+By default, <kbd>Ctrl-C</kbd> sends a `SIGINT` signal to the current process
+which causes it to terminate, and <kbd> Ctrl-Z</kbd> sends a `SIGTSTP` signal to
+the current process which causes it to suspend. Let's turn off the sending of
+both of these signals using the `unix.ISIG` flag
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 9. Turn off Ctrl-C and Ctrl-Z signals| rawmode_unix.go|
+| Turn off Ctrl-C and Ctrl-Z signals| rawmode_unix.go|
 
-```go
+```diff
+ // ...
+ func rawMode() (func(), error) {
 
-//######## Lines to Add/Change ##########
+    // ...
+ 
+    copy := *termios
+ 
+-   termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON)
++   termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
+ 
+    if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+        return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+    }
 
-termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
-
-//################################
+    // ...
+ 
+ }
 ```
 
-`ISIG` comes from `<termios.h>`. Like `ICANON`, it starts with `I` but isn't an input flag.
-
-Now <kbd>Ctrl-C</kbd> can be read as a `3` byte and <kbd>Ctrl-Z</kbd> can be read as a `26` byte.
-
-This also disables <kbd>Ctrl-Y</kbd> on macOS, which is like <kbd>Ctrl-Z</kbd>
-except it waits for the program to read input before suspending it.
+Now <kbd>Ctrl-C</kbd> can be read as a `3` byte and <kbd>Ctrl-Z</kbd> can be
+read as a `26` byte.  This also disables <kbd>Ctrl-Y</kbd> on macOS, which is
+like <kbd>Ctrl-Z</kbd> except it waits for the program to read input before
+suspending it.
 
 ## 10. Disable <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd>
 
-By default, <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd> are used for
+By default, <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd> are used for 
 [software flow control](https://en.wikipedia.org/wiki/Software_flow_control).
-<kbd>Ctrl-S</kbd> stops data from being transmitted to the terminal until you press <kbd>Ctrl-Q</kbd>. This originates
-in the days when you might want to pause the transmission of data to let a device like a printer catch up. Let's just
-turn off that feature.
+<kbd>Ctrl-S</kbd> stops data from being transmitted to the terminal until you
+press <kbd>Ctrl-Q</kbd>. This originates in the days when you might want to
+pause the transmission of data to let a device like a printer catch up. Let's
+just turn off that feature.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 10. Disable Ctrl-S and Ctrl-Q | rawmode_unix.go|
+| Disable Ctrl-S and Ctrl-Q | rawmode_unix.go|
 
-```go
+```diff
+ 
+ // ...
 
-
-termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
-
-//######## Lines to Add/Change ##########
-termios.Iflag = termios.Iflag &^ (unix.IXON)
-//################################
+ func rawMode() (func(), error) {
+ 
+	// ...
+ 
+ 	copy := *termios
+ 
+ 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
++	termios.Iflag = termios.Iflag &^ (unix.IXON)
+ 
+ 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+ 		return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+ 	}
+ 
+	// ...
+ }
 
 ```
 
-The `I` in `IXON` stands for "input flag" (which it is, unlike the other `L` flags we've seen so far) and `XON` comes
-from the names of the two control characters that <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd>
-produce: `XOFF` to pause transmission and `XON` to resume transmission.
+The `I` in `IXON` stands for "input flag" (which it is, unlike the other `L`
+flags we've seen so far) and `XON` comes from the names of the two control
+characters that <kbd>Ctrl-S</kbd> and <kbd>Ctrl-Q</kbd> produce: `XOFF` to pause
+transmission and `XON` to resume transmission.
 
-Now <kbd>Ctrl-S</kbd> can be read as a `19` byte and <kbd>Ctrl-Q</kbd> can be read as a `17` byte.
+Now <kbd>Ctrl-S</kbd> can be read as a `19` byte and <kbd>Ctrl-Q</kbd> can be
+read as a `17` byte.
 
 ## 11. Disable <kbd>Ctrl-V</kbd>
 
-On some systems, when you type <kbd>Ctrl-V</kbd>, the terminal waits for you to type another character and then sends
-that character literally. For example, before we disabled <kbd>Ctrl-C</kbd>, you might've been able to type
-<kbd>Ctrl-V</kbd> and then <kbd>Ctrl-C</kbd> to input a `3` byte. We can turn off this feature using the `IEXTEN` flag.
+On some systems, when you type <kbd>Ctrl-V</kbd>, the terminal waits for you to
+type another character and then sends that character literally. For example,
+before we disabled <kbd>Ctrl-C</kbd>, you might've been able to type
+<kbd>Ctrl-V</kbd> and then <kbd>Ctrl-C</kbd> to input a `3` byte. We can turn
+off this feature using the `IEXTEN` flag.
 
-Turning off `IEXTEN` also fixes <kbd>Ctrl-O</kbd> in macOS, whose terminal driver is otherwise set to discard that
-control character. It is another flag that starts with `I` but actually belongs in the `Lflag` field.
+Turning off `IEXTEN` also fixes <kbd>Ctrl-O</kbd> in macOS, whose terminal
+driver is otherwise set to discard that control character. It is another flag
+that starts with `I` but actually belongs in the `Lflag` field.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 11. Disable Ctrl-V | rawmode_unix.go|
+| Disable Ctrl-V | rawmode_unix.go|
 
-```go
+```diff
+ 
+ // ...
 
-//######## Lines to Add/Change ##########
-termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
-//################################
-termios.Iflag = termios.Iflag &^ (unix.IXON)
-
+ func rawMode() (func(), error) {
+ 
+	// ...
+ 
+ 	copy := *termios
+ 
+-	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG)
++	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+ 	termios.Iflag = termios.Iflag &^ (unix.IXON)
+ 
+ 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+ 		return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+ 	}
+ 
+	// ...
+ }
 ```
 
 <kbd>Ctrl-V</kbd> can now be read as a `22` byte, and <kbd>Ctrl-O</kbd> as a
@@ -652,263 +694,297 @@ termios.Iflag = termios.Iflag &^ (unix.IXON)
 
 If you run the program now and go through the whole alphabet while holding down
 <kbd>Ctrl</kbd>, you should see that we have every letter except <kbd>M</kbd>.
-<kbd>Ctrl-M</kbd> is weird: it's being read as `10`, when we expect it to be read as `13`, since it is the 13th letter
-of the alphabet, and
-<kbd>Ctrl-J</kbd> already produces a `10`. What else produces `10`? The
-<kbd>Enter</kbd> key does.
-
+<kbd>Ctrl-M</kbd> is weird: it's being read as `10`, when we expect it to be
+read as `13`, since it is the 13th letter of the alphabet, and <kbd>Ctrl-J</kbd>
+already produces a `10`. What else produces `10`? The <kbd>Enter</kbd> key does.
 It turns out that the terminal is helpfully translating any carriage returns
-(`13`, `'\r'`) inputted by the user into newlines (`10`, `'\n'`). Let's turn off this feature.
+(`13`, `'\r'`) inputted by the user into newlines (`10`, `'\n'`). Let's turn off
+this feature.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 12. Fix Ctrl-M | rawmode_unix.go|
+| Fix Ctrl-M | rawmode_unix.go|
 
-```go
+```diff
+ 
+ // ...
 
-termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
-//######## Lines to Add/Change ##########
-termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
-//################################
+ func rawMode() (func(), error) {
 
+	// ...
+ 
+ 	copy := *termios
+ 
+ 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+-	termios.Iflag = termios.Iflag &^ (unix.IXON)
++	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
+ 
+ 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+ 		return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+ 	}
+ 
+    // ...
+ }
 ```
 
-The `I` in `ICRNL` stands for "input flag", `CR` stands for "carriage return", and `NL` stands for "new line".
-
-Now <kbd>Ctrl-M</kbd> is read as a `13` (carriage return), and the
-<kbd>Enter</kbd> key is also read as a `13`.
+The `I` in `ICRNL` stands for "input flag", `CR` stands for "carriage return",
+and `NL` stands for "new line".  Now <kbd>Ctrl-M</kbd> is read as a `13`
+(carriage return), and the <kbd>Enter</kbd> key is also read as a `13`.
 
 ## 13. Turn off all output processing
 
-It turns out that the terminal does a similar translation on the output side. It translates each newline (`"\n"`) we
-print into a carriage return followed by a newline (`"\r\n"`). The terminal requires both of these characters in order
-to start a new line of text. The carriage return moves the cursor back to the beginning of the current line, and the
-newline moves the cursor down a line, scrolling the screen if necessary. (These two distinct operations originated in
+It turns out that the terminal does a similar translation on the output side. It
+translates each newline (`"\n"`) we print into a carriage return followed by a
+newline (`"\r\n"`). The terminal requires both of these characters in order to
+start a new line of text. The carriage return moves the cursor back to the
+beginning of the current line, and the newline moves the cursor down a line,
+scrolling the screen if necessary. (These two distinct operations originated in
 the days of typewriters and
 [teletypes](https://en.wikipedia.org/wiki/Teleprinter).)
 
-We will turn off all output processing features by turning off the `OPOST`
-flag. In practice, the `"\n"` to `"\r\n"` translation is likely the only output processing feature turned on by
-default. `O` means it's an output flag, and I assume `POST` stands for "post-processing of output".
+We will turn off all output processing features by turning off the `OPOST` flag.
+In practice, the `"\n"` to `"\r\n"` translation is likely the only output
+processing feature turned on by default. `O` means it's an output flag, and I
+assume `POST` stands for "post-processing of output".
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 13. Turn off all output processing | rawmode_unix.go|
+| Turn off all output processing | rawmode_unix.go|
 
-```go
+```diff
+ 
+ // ...
 
-termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
-termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
-//######## Lines to Add/Change ##########
-termios.Oflag = termios.Oflag &^ (unix.OPOST)
-//################################
+ func rawMode() (func(), error) {
 
+	// ...
+ 
+ 	copy := *termios
+ 
+ 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
++   termios.Oflag = termios.Oflag &^ (unix.OPOST)
+ 
+ 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+ 		return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+ 	}
+ 
+    // ...
+ }
 ```
 
 ## 14. Fix carriage returns
 
-If you ran the program after turning off `OPOST`, you'll see that the newline characters we're printing are only moving
-the cursor down, and not to the left side of the screen. To fix that, let's add carriage returns to our
-`fmt.Printf()` statements.
+If you ran the program after turning off `OPOST`, you'll see that the newline
+characters we're printing are only moving the cursor down, and not to the left
+side of the screen. To fix that, let's add carriage returns to our
+`fmt.Printf()` statements.  From now on, we'll have to write out the full
+`"\r\n"` whenever we want to start a new line.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 14. Fix carriage returns | main.go|
+| Fix carriage returns | main.go|
 
-```go 
+```diff
 
-//######## Lines to Add/Change ##########
-func main() {
+ // ..
 
-	origTermios, err := rawMode()
-	if err != nil {
-		fmt.Printf("Error: %s\r\n", err)
-		os.Exit(1)
-	}
-
-	defer func() {
-		if err := restore(origTermios); err != nil {
-			fmt.Printf("Error: %s\r\n", err)
-		}
-	}()
-
-	r := bufio.NewReader(os.Stdin)
-
-	for {
-		b, err := r.ReadByte()
-
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			fmt.Printf("Error reading from Stdin: %s\r\n", err)
-			os.Exit(1)
-		}
-
-		if isCntrl(b) {
-			fmt.Printf("%d\r\n", b)
-		} else {
-			fmt.Printf("%d (%c)\r\n", b, b)
-		}
-
-		if b == 'q' {
-			break
-		}
-	}
-}
-//################################
-
+ func main() {
+ 
+ 	restoreFunc, err := rawMode()
+ 	if err != nil {
+-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
++		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+ 		os.Exit(1)
+ 	}
+ 	defer restoreFunc()
+ 
+ 	r := bufio.NewReader(os.Stdin)
+ 
+ 	for {
+ 		ru, _, err := r.ReadRune()
+ 
+ 		if err == io.EOF {
+ 			break
+ 		} else if err != nil {
+-			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\n", err)
++			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\r\n", err)
+ 			os.Exit(1)
+ 		}
+ 		if unicode.IsControl(ru) {
+-			fmt.Printf("%d\n", ru)
++			fmt.Printf("%d\r\n", ru)
+ 		} else {
+-			fmt.Printf("%d (%c)\n", ru, ru)
++			fmt.Printf("%d (%c)\r\n", ru, ru)
+ 		}
+ 
+ 		if ru == 'q' {
+ 			break
+ 		}
+ 	}
+ }
 ```
 
-From now on, we'll have to write out the full `"\r\n"` whenever we want to start a new line.
+| **Commit Title** | **Location** |
+|:-----------------|---------:|
+| Fix carriage returns | rawmode_unix.go|
 
-## 15. Miscellaneous flags
+```diff
+
+ // ...
+
+ func rawMode() (func(), error) {
+ 
+	// ...
+ 
+ 	return func() {
+ 		if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, &copy); err != nil {
+-			fmt.Fprintf(os.Stderr, "rawMode: error restoring originl console settings: %s", err)
++			fmt.Fprintf(os.Stderr, "rawMode: error restoring originl console settings: %s\r\n", err)
+ 		}
+ 	}, nil
+ }
+```
+## 15. Turn off Miscellaneous flags
 
 Let's turn off a few more flags. `BRKINT`, `INPCK`, `ISTRIP`, and `CS8`.
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 15. Miscellaneous flags | main.go|
+| Turn off Miscellaneous flags | main.go|
 
-```go 
+```diff
 
-    termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+ // ...
 
-    //######## Lines to Add/Change ##########
-    termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL | unix.BRKINT | unix.INPCK | unix.ISTRIP)
-    //################################
+ func rawMode() (func(), error) {
+ 
+	// ...
+ 
+ 	copy := *termios
+ 
+ 	termios.Lflag = termios.Lflag &^ (unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
+-	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL)
++	termios.Iflag = termios.Iflag &^ (unix.IXON | unix.ICRNL | unix.BRKINT | unix.INPCK | unix.ISTRIP)
+ 	termios.Oflag = termios.Oflag &^ (unix.OPOST)
++	termios.Cflag = termios.Cflag | unix.CS8
+ 
+ 	if err := unix.IoctlSetTermios(unix.Stdin, unix.TCSETSF, termios); err != nil {
+ 		return nil, fmt.Errorf("rawMode: error setting terminal flags: %w", err)
+ 	}
 
-    termios.Oflag = termios.Oflag &^ (unix.OPOST)
-
-    //######## Lines to Add/Change ##########
-    termios.Cflag = termios.Cflag | unix.CS8
-    //################################
-
+	// ...
+ }
 ```
 
-This step probably won't have any observable effect for you, because these flags are either already turned off, or they
-don't really apply to modern terminal emulators. But at one time or another, switching them off was considered (by
-someone) to be part of enabling "raw mode", so we carry on the tradition (of whoever that someone was) in our program.
+This step probably won't have any observable effect for you, because these flags
+are either already turned off, or they don't really apply to modern terminal
+emulators. But at one time or another, switching them off was considered (by
+someone) to be part of enabling "raw mode", so we carry on the tradition (of
+whoever that someone was) in our program. From what we can tell
 
-As far as I can tell:
-
-* When `BRKINT` is turned on, a
-  [break condition](https://www.cmrr.umn.edu/~strupp/serial.html#2_3_3) will cause a `SIGINT` signal to be sent to the
-  program, like pressing `Ctrl-C`.
-* `INPCK` enables parity checking, which doesn't seem to apply to modern terminal emulators.
-* `ISTRIP` causes the 8th bit of each input byte to be stripped, meaning it will set it to `0`. This is probably already
-  turned off.
-* `CS8` is not a flag, it is a bit mask with multiple bits, which we set using the bitwise-OR (`|`) operator unlike all
-  the flags we are turning off. It sets the character size (CS) to 8 bits per byte. On my system, it's already set that
-  way.
+- When `BRKINT` is turned on, a [break
+  condition](https://www.cmrr.umn.edu/~strupp/serial.html#2_3_3) will cause a
+  `SIGINT` signal to be sent to the program, like pressing `Ctrl-C`.
+- `INPCK` enables parity checking, which doesn't seem to apply to modern
+  terminal emulators.
+- `ISTRIP` causes the 8th bit of each input byte to be stripped, meaning it will
+  set it to `0`. This is probably already turned off.
+- `CS8` is not a flag, it is a bit mask with multiple bits, which we set using
+  the bitwise-OR (`|`) operator unlike all the flags we are turning off. It sets
+  the character size (CS) to 8 bits per byte. On my system, it's already set
+  that way.
 
 ## 16. Safe Exit
 
-Now that we are able to get into raw mode and also restore safely, let's create a helper function that we can call
-anywhere from our program to exit raw mode safely, show error messages if any and indicate to the OS whether we exited
+Now that we are able to get into raw mode and also restore safely, let's create
+a helper function that we can call anywhere from our program to exit raw mode
+safely, show error messages if any and indicate to the OS whether we exited
 cleanly or with errors.
 
-To do this, we are going to take advantage of a feature of Go called
-[First Class Functions](https://golang.org/doc/codewalk/functions/) in which we can treat functions as we would treat
-any other variables and structs.
+To do this, we are agian going to take advantage of 
+[First Class Functions](https://golang.org/doc/codewalk/functions/). 
+We will first create a globally accessible variable `safeExit` which takes the
+type `func(error)`. In other words, we can assign to this variable any function
+that takes an `error` as a parameter and returns nothing.
 
-Let us first create a globally accessible variable `safeExit` which takes the type `func(error)`. In other words, we can
-assign to this variable any function that takes an `error` as a parameter and returns nothing.
+Then after we get `restoreFunc` by calling `rawMode()`, we can set `safeExit` to
+an anonymous function that restores terminal settings and also prints an error
+message if `safeExit` was called with a non-`nil` error value.
 
-| **Commit Title** | **Location** |
-|:-----------------|---------:|
-| 16. Safe Exit | main.go|
-
-```go
-
-import (
-"bufio"
-"fmt"
-"io"
-"os"
-)
-
-//######## Lines to Add/Change ##########
-var safeExit func (error)
-//################################
-
-func isCntrl(b byte) bool {
-
-```
-
-Then after we get `origTermios` by calling `rawMode()`, we can set
-`safeExit` to such an anonymous function that restores `origTermios`
-and also prints an error message if `safeExit` was called with a non-`nil` error value similar to what we were doing
-previously in the `defer` statement. One tweak here is we explictly now log error messages to `os.Stderr` which is where
-by convention operating systems expect error messages to show up. To do this, we can use `fmt.Fprintf`
-funciton which allows us to send output to anything that implements the standard `io.Writer` interface which `os.Stderr`
-does. We take this opportunity to also make the same change in the code that handles failure to enter raw mode.
+Finally, we can simply change the `defer` statement to call `safeExit(nil)` to
+call it with no error and similarly change the places we need to exit with error
+to `safeExit(err)`
 
 | **Commit Title** | **Location** |
 |:-----------------|---------:|
-| 16. Safe Exit | main.go|
+| Safe Exit | main.go|
 
-```go
-
-origTermios, err := rawMode()
-if err != nil {
-
-//######## Lines to Add/Change ##########
-fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
-//################################
-
-os.Exit(1)
-}
-
-//######## Lines to Add/Change ##########
-safeExit = func (err error) {
-if errRestore := restore(origTermios); err != nil {
-fmt.Fprintf(os.Stderr, "Error: disabling raw mode: %s\r\n", errRestore)
-}
-
-if err != nil {
-fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
-os.Exit(1)
-}
-os.Exit(0)
-}
-//################################
+```diff
+ package main
+ 
+ import (
+ 	"bufio"
+ 	"fmt"
+ 	"io"
+ 	"os"
+ 	"unicode"
+ )
+ 
++var safeExit func(error)
++
+ func main() {
+ 
+ 	restoreFunc, err := rawMode()
++
++	safeExit = func(err error) {
++		if restoreFunc != nil {
++			restoreFunc()
++		}
++
++		if err != nil {
++			fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
++			os.Exit(1)
++		}
++		os.Exit(0)
++	}
++	defer safeExit(nil)
++
+ 	if err != nil {
+-		fmt.Fprintf(os.Stderr, "Error: %s\r\n", err)
+-		os.Exit(1)
++		safeExit(err)
+ 	}
+-	defer restoreFunc()
+ 
+ 	r := bufio.NewReader(os.Stdin)
+ 
+ 	for {
+ 		ru, _, err := r.ReadRune()
+ 
+ 		if err == io.EOF {
+ 			break
+ 		} else if err != nil {
+-			fmt.Fprintf(os.Stderr, "Error: reading key from Stdin: %s\r\n", err)
+-			os.Exit(1)
++			safeExit(err)
+ 		}
+ 		if unicode.IsControl(ru) {
+ 			fmt.Printf("%d\r\n", ru)
+ 		} else {
+ 			fmt.Printf("%d (%c)\r\n", ru, ru)
+ 		}
+ 
+ 		if ru == 'q' {
+ 			break
+ 		}
+ 	}
+ }
 
 ```
 
-Finally, we can simply change the `defer` statement to call
-`safeExit(nil)` to call it with no error and similarly change the places we need to exit with error to `safeExit(err)`
-
-| **Commit Title** | **Location** |
-|:-----------------|---------:|
-| 16. Safe Exit | main.go|
-
-```go
-
-//######## Lines to Add/Change ##########
-defer safeExit(nil)
-//################################
-
-r := bufio.NewReader(os.Stdin)
-
-for {
-b, err := r.ReadByte()
-
-if err == io.EOF {
-break
-} else if err != nil {
-//######## Lines to Add/Change ##########
-safeExit(err)
-//################################
-}
-
-if isCntrl(b) {
-```
-
-An easy way to make `rawMode()` fail is to give your program a text file or a pipe as the standard input instead of your
-terminal. To give it a file as standard input, run `./gokilo < main.go`. To give it a pipe, run
-`echo test | ./gokilo`. Both should result in an error like
-`inappropriate ioctl for device`.
-
-That just about concludes this chapter on entering raw mode. In the
-[next chapter](/raw-input-and-output.html), we'll do some more low-level terminal input/output handling, and use that to
-draw to the screen and allow the user to move the cursor around.
+That just about concludes this chapter on entering raw mode. In the [next
+chapter](/raw-input-and-output.html), we'll do some more low-level terminal
+input/output handling, and use that to draw to the screen and allow the user to
+move the cursor around.
